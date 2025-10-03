@@ -85,95 +85,107 @@ if st.button("Buscar"):
             else:
                 no_encontrados.append(codigo)
 
-        col1, col2 = st.columns(2)
+        # Guardar resultados en session_state para mantenerlos después del ZIP
+        st.session_state["encontrados"] = encontrados
+        st.session_state["no_encontrados"] = no_encontrados
 
-        # ========================================
-        # ✅ CÓDIGOS ENCONTRADOS (Enumerados + Previo)
-        # ========================================
-        with col1:
-            st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+# ========================================
+# 🧾 MOSTRAR RESULTADOS (si existen)
+# ========================================
+if "encontrados" in st.session_state:
+    encontrados = st.session_state["encontrados"]
+    no_encontrados = st.session_state["no_encontrados"]
 
-            if encontrados:
-                for codigo, img in encontrados:
-                    buffered = BytesIO()
-                    img.save(buffered, format="JPEG")
-                    img_base64 = base64.b64encode(buffered.getvalue()).decode()
-                    st.markdown(
-                        f"""
-                        <div style="position:relative; display:inline-block; margin:5px;">
-                            <span style="cursor:pointer; color:#0066cc;">{codigo}</span>
-                            <div style="position:absolute; top:20px; left:0; display:none; z-index:100; border:1px solid #ccc; background:white; padding:2px;">
-                                <img src="data:image/jpeg;base64,{img_base64}" width="200"/>
-                            </div>
+    col1, col2 = st.columns(2)
+
+    # ========================================
+    # ✅ CÓDIGOS ENCONTRADOS (blancos + previo)
+    # ========================================
+    with col1:
+        st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+
+        if encontrados:
+            for codigo, img in encontrados:
+                buffered = BytesIO()
+                img.save(buffered, format="JPEG")
+                img_base64 = base64.b64encode(buffered.getvalue()).decode()
+                st.markdown(
+                    f"""
+                    <div style="position:relative; display:inline-block; margin:5px;">
+                        <span style="cursor:pointer; color:white;">{codigo}</span>
+                        <div style="position:absolute; top:20px; left:0; display:none; z-index:100; border:1px solid #ccc; background:white; padding:2px;">
+                            <img src="data:image/jpeg;base64,{img_base64}" width="200"/>
                         </div>
-                        <script>
-                        const container = document.currentScript.previousElementSibling;
-                        const imgDiv = container.querySelector('div');
-                        container.onmouseover = () => imgDiv.style.display='block';
-                        container.onmouseout = () => imgDiv.style.display='none';
-                        </script>
-                        """,
-                        unsafe_allow_html=True
-                    )
-            else:
-                st.info("No se encontró ningún código válido.")
+                    </div>
+                    <script>
+                    const container = document.currentScript.previousElementSibling;
+                    const imgDiv = container.querySelector('div');
+                    container.onmouseover = () => imgDiv.style.display='block';
+                    container.onmouseout = () => imgDiv.style.display='none';
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
+        else:
+            st.info("No se encontró ningún código válido.")
 
-        # ========================================
-        # ⚠️ CÓDIGOS NO ENCONTRADOS (corregido)
-        # ========================================
-        with col2:
-            st.markdown("#### ⚠️ Códigos no encontrados")
-            if no_encontrados:
-                for codigo in no_encontrados:
-                    payload = json.dumps({"codigo_faltante": codigo})
-                    st.markdown(
-                        f"<span style='cursor:pointer; color:#cc0000; text-decoration:underline;' "
-                        f"onclick='window.parent.postMessage({payload}, \"*\")'>{codigo}</span><br>",
-                        unsafe_allow_html=True
-                    )
-            else:
-                st.info("Todos los códigos fueron encontrados.")
+    # ========================================
+    # ⚠️ CÓDIGOS NO ENCONTRADOS (blancos + corregido)
+    # ========================================
+    with col2:
+        st.markdown("#### ⚠️ Códigos no encontrados")
+        if no_encontrados:
+            for codigo in no_encontrados:
+                payload = json.dumps({"codigo_faltante": codigo})
+                st.markdown(
+                    f"<span style='cursor:pointer; color:white; text-decoration:underline;' "
+                    f"onclick='window.parent.postMessage({payload}, \"*\")'>{codigo}</span><br>",
+                    unsafe_allow_html=True
+                )
+        else:
+            st.info("Todos los códigos fueron encontrados.")
 
-        # ========================================
-        # 🔍 Resaltado de códigos faltantes
-        # ========================================
-        st.markdown("""
-        <script>
-        window.addEventListener('message', (event) => {
-            const data = event.data;
-            if (data && data.codigo_faltante) {
-                const textarea = parent.document.querySelector('textarea');
-                if (textarea) {
-                    const text = textarea.value;
-                    const start = text.indexOf(data.codigo_faltante);
-                    if (start !== -1) {
-                        textarea.focus();
-                        textarea.setSelectionRange(start, start + data.codigo_faltante.length);
-                    }
+    # ========================================
+    # 🔍 Resaltado de códigos faltantes
+    # ========================================
+    st.markdown("""
+    <script>
+    window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (data && data.codigo_faltante) {
+            const textarea = parent.document.querySelector('textarea');
+            if (textarea) {
+                const text = textarea.value;
+                const start = text.indexOf(data.codigo_faltante);
+                if (start !== -1) {
+                    textarea.focus();
+                    textarea.setSelectionRange(start, start + data.codigo_faltante.length);
                 }
             }
-        });
-        </script>
-        """, unsafe_allow_html=True)
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
 
-        # ========================================
-        # 💾 DESCARGAR TODO (ZIP)
-        # ========================================
-        if encontrados:
-            st.markdown("#### ⬇️ Descargar todo")
+    # ========================================
+    # 💾 DESCARGAR TODO (ZIP)
+    # ========================================
+    if encontrados:
+        st.markdown("#### ⬇️ Descargar todo")
 
-            zip_buffer = BytesIO()
-            with ZipFile(zip_buffer, "w") as zip_file:
-                for codigo, img in encontrados:
-                    img_bytes = BytesIO()
-                    img.save(img_bytes, format="JPEG")
-                    zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, "w") as zip_file:
+            for codigo, img in encontrados:
+                img_bytes = BytesIO()
+                img.save(img_bytes, format="JPEG")
+                zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
 
-            zip_buffer.seek(0)
+        zip_buffer.seek(0)
 
-            st.download_button(
-                label="📦 Descargar todo en ZIP",
-                data=zip_buffer,
-                file_name="imagenes_encontradas.zip",
-                mime="application/zip"
-            )
+        st.download_button(
+            label="📦 Descargar todo en ZIP",
+            data=zip_buffer,
+            file_name="imagenes_encontradas.zip",
+            mime="application/zip",
+            key="descargar_zip"
+        )
