@@ -138,7 +138,7 @@ if "encontrados" in st.session_state:
             for codigo in no_encontrados:
                 payload = json.dumps({"codigo_faltante": codigo})
                 st.markdown(
-                    f"<span style='cursor:pointer; color:white; text-decoration:underline;' "
+                    f"<span style='cursor:pointer; color:white;' "
                     f"onclick='window.parent.postMessage({payload}, \"*\")'>{codigo}</span><br>",
                     unsafe_allow_html=True
                 )
@@ -183,9 +183,10 @@ if "encontrados" in st.session_state:
         zip_buffer.seek(0)
 
         st.download_button(
-            label="📦 Descargar todo en ZIP",
+            label="📦 Descargar todo",
             data=zip_buffer,
             file_name="imagenes_encontradas.zip",
             mime="application/zip",
             key="descargar_zip"
         )
+
