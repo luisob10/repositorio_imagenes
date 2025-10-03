@@ -17,14 +17,16 @@ if "autenticado" not in st.session_state:
 
 # --- Ingresar también con tecla ENTER ---
 if not st.session_state["autenticado"]:
-    clave = st.text_input("🔐 Ingresa la clave de acceso", type="password")
-    if clave and (st.session_state.get("clave_enter") or st.button("Entrar")):
+    with st.form("login_form"):
+        clave = st.text_input("🔐 Ingresa la clave de acceso", type="password")
+        entrar = st.form_submit_button("Entrar")  # Se activa también con ENTER
+
+    if entrar:
         if clave == PASSWORD:
             st.session_state["autenticado"] = True
             st.rerun()
         else:
             st.error("❌ Clave incorrecta")
-    st.session_state["clave_enter"] = clave != ""
     st.stop()
 
 # ========================================
@@ -85,7 +87,7 @@ if st.button("Buscar"):
             else:
                 no_encontrados.append(codigo)
 
-        # Guardar resultados en session_state para mantenerlos después del ZIP
+        # Guardar resultados en session_state
         st.session_state["encontrados"] = encontrados
         st.session_state["no_encontrados"] = no_encontrados
 
@@ -99,7 +101,7 @@ if "encontrados" in st.session_state:
     col1, col2 = st.columns(2)
 
     # ========================================
-    # ✅ CÓDIGOS ENCONTRADOS (blancos + previo)
+    # ✅ CÓDIGOS ENCONTRADOS
     # ========================================
     with col1:
         st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
@@ -130,7 +132,7 @@ if "encontrados" in st.session_state:
             st.info("No se encontró ningún código válido.")
 
     # ========================================
-    # ⚠️ CÓDIGOS NO ENCONTRADOS (blancos + corregido)
+    # ⚠️ CÓDIGOS NO ENCONTRADOS
     # ========================================
     with col2:
         st.markdown("#### ⚠️ Códigos no encontrados")
@@ -189,4 +191,3 @@ if "encontrados" in st.session_state:
             mime="application/zip",
             key="descargar_zip"
         )
-
