@@ -5,6 +5,7 @@ from io import BytesIO
 from PIL import Image
 import base64
 from zipfile import ZipFile
+import json
 
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
@@ -14,7 +15,7 @@ PASSWORD = "123"  # cámbiala a la tuya
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
-# --- (1) Ingresar también con tecla ENTER ---
+# --- Ingresar también con tecla ENTER ---
 if not st.session_state["autenticado"]:
     clave = st.text_input("🔐 Ingresa la clave de acceso", type="password")
     if clave and (st.session_state.get("clave_enter") or st.button("Entrar")):
@@ -118,19 +119,16 @@ if st.button("Buscar"):
                 st.info("No se encontró ningún código válido.")
 
         # ========================================
-        # ⚠️ CÓDIGOS NO ENCONTRADOS
+        # ⚠️ CÓDIGOS NO ENCONTRADOS (corregido)
         # ========================================
         with col2:
             st.markdown("#### ⚠️ Códigos no encontrados")
             if no_encontrados:
                 for codigo in no_encontrados:
+                    payload = json.dumps({"codigo_faltante": codigo})
                     st.markdown(
-                        f"""
-                        <span 
-                            style='cursor:pointer; color:#cc0000; text-decoration:underline;'
-                            onClick="window.parent.postMessage({{'codigo_faltante':'{codigo}'}}, '*')"
-                        >{codigo}</span><br>
-                        """, 
+                        f"<span style='cursor:pointer; color:#cc0000; text-decoration:underline;' "
+                        f"onclick='window.parent.postMessage({payload}, \"*\")'>{codigo}</span><br>",
                         unsafe_allow_html=True
                     )
             else:
@@ -143,7 +141,7 @@ if st.button("Buscar"):
         <script>
         window.addEventListener('message', (event) => {
             const data = event.data;
-            if (data.codigo_faltante) {
+            if (data && data.codigo_faltante) {
                 const textarea = parent.document.querySelector('textarea');
                 if (textarea) {
                     const text = textarea.value;
