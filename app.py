@@ -4,6 +4,7 @@ import requests
 from io import BytesIO
 from PIL import Image
 import base64
+from zipfile import ZipFile
 
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
@@ -16,14 +17,12 @@ if "autenticado" not in st.session_state:
 # --- (1) Ingresar también con tecla ENTER ---
 if not st.session_state["autenticado"]:
     clave = st.text_input("🔐 Ingresa la clave de acceso", type="password")
-    # Si presiona Enter o el botón
     if clave and (st.session_state.get("clave_enter") or st.button("Entrar")):
         if clave == PASSWORD:
             st.session_state["autenticado"] = True
             st.rerun()
         else:
             st.error("❌ Clave incorrecta")
-    # Detectar Enter
     st.session_state["clave_enter"] = clave != ""
     st.stop()
 
@@ -56,14 +55,12 @@ def obtener_imagen(id_drive):
 # ========================================
 st.markdown("### 📥 Ingresar códigos")
 
-# --- (2) Eliminar texto de ayuda y (3) duplicar tamaño de caja ---
 input_codigos = st.text_area(
     "Códigos desde Excel", 
-    height=300,  # tamaño al doble
+    height=300,  
     label_visibility="collapsed"
 )
 
-# Variable para controlar resaltado del código faltante
 if "resaltado" not in st.session_state:
     st.session_state["resaltado"] = ""
 
@@ -87,14 +84,14 @@ if st.button("Buscar"):
             else:
                 no_encontrados.append(codigo)
 
-        # ========================================
-        # 📋 MOSTRAR RESULTADOS EN 2 COLUMNAS
-        # ========================================
         col1, col2 = st.columns(2)
 
-        # --- (5) Mostrar imagen al pasar el cursor ---
+        # ========================================
+        # ✅ CÓDIGOS ENCONTRADOS (Enumerados + Previo)
+        # ========================================
         with col1:
-            st.markdown("#### ✅ Códigos encontrados")
+            st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+
             if encontrados:
                 for codigo, img in encontrados:
                     buffered = BytesIO()
@@ -104,7 +101,7 @@ if st.button("Buscar"):
                         f"""
                         <div style="position:relative; display:inline-block; margin:5px;">
                             <span style="cursor:pointer; color:#0066cc;">{codigo}</span>
-                            <div style="position:absolute; top:20px; left:0; display:none; z-index:100; border:1px solid #ccc; background:white;">
+                            <div style="position:absolute; top:20px; left:0; display:none; z-index:100; border:1px solid #ccc; background:white; padding:2px;">
                                 <img src="data:image/jpeg;base64,{img_base64}" width="200"/>
                             </div>
                         </div>
@@ -120,7 +117,9 @@ if st.button("Buscar"):
             else:
                 st.info("No se encontró ningún código válido.")
 
-        # --- (4) Click en código no encontrado para resaltarlo ---
+        # ========================================
+        # ⚠️ CÓDIGOS NO ENCONTRADOS
+        # ========================================
         with col2:
             st.markdown("#### ⚠️ Códigos no encontrados")
             if no_encontrados:
@@ -137,7 +136,9 @@ if st.button("Buscar"):
             else:
                 st.info("Todos los códigos fueron encontrados.")
 
-        # Script para resaltar en caja de texto (JS + Streamlit event)
+        # ========================================
+        # 🔍 Resaltado de códigos faltantes
+        # ========================================
         st.markdown("""
         <script>
         window.addEventListener('message', (event) => {
@@ -158,17 +159,23 @@ if st.button("Buscar"):
         """, unsafe_allow_html=True)
 
         # ========================================
-        # 💾 DESCARGA DIRECTA DE IMÁGENES
+        # 💾 DESCARGAR TODO (ZIP)
         # ========================================
         if encontrados:
             st.markdown("#### ⬇️ Descargar todo")
 
-            for codigo, img in encontrados:
-                buffered = BytesIO()
-                img.save(buffered, format="JPEG")
-                btn = st.download_button(
-                    label=f"Descargar {codigo}.jpg",
-                    data=buffered.getvalue(),
-                    file_name=f"{codigo}.jpg",
-                    mime="image/jpeg"
-                )
+            zip_buffer = BytesIO()
+            with ZipFile(zip_buffer, "w") as zip_file:
+                for codigo, img in encontrados:
+                    img_bytes = BytesIO()
+                    img.save(img_bytes, format="JPEG")
+                    zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
+
+            zip_buffer.seek(0)
+
+            st.download_button(
+                label="📦 Descargar todo en ZIP",
+                data=zip_buffer,
+                file_name="imagenes_encontradas.zip",
+                mime="application/zip"
+            )
