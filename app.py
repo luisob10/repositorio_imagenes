@@ -52,7 +52,7 @@ def obtener_imagen(id_drive):
     return None
 
 # ========================================
-# 🌐 INTERFAZ PRINCIPAL (estilo Photoshop reducido)
+# 🌐 INTERFAZ PRINCIPAL (estilo Photoshop)
 # ========================================
 st.markdown(
     """
@@ -72,52 +72,22 @@ st.markdown(
     .panel {
         background: #3a3a3a;
         color: white;
-        border-radius: 6px;
-        padding: 8px;
+        border-radius: 8px;
+        padding: 10px;
         overflow-y: auto;
-        box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.6);
     }
     .panel h3 {
-        font-size: 12px; /* 🔽 Mitad del tamaño */
         margin-top: 0;
+        font-size: 16px;
         border-bottom: 1px solid #555;
-        padding-bottom: 3px;
+        padding-bottom: 4px;
     }
-    /* --- Hover preview --- */
-    .code-hover {
-        display:inline-block;
-        margin:4px;
-        padding:2px 5px;
-        border:1px solid #4CAF50;
-        border-radius:4px;
-        cursor:pointer;
-        background:#2c2c2c;
-        position:relative;
-    }
-    .code-hover .preview {
-        display:none;
-        position:absolute;
-        top:100%;
-        left:0;
-        z-index:100;
-        background:white;
-        border:1px solid #ccc;
-        padding:2px;
-    }
-    .code-hover .preview img {
-        width:120px;
-        height:auto;
-    }
-    .code-hover:hover .preview {
-        display:block;
-    }
-    /* --- No encontrados estilo simple --- */
-    .code-miss {
-        display:inline-block;
-        margin:4px;
-        padding:2px 5px;
-        border:1px solid #aaa;
-        border-radius:4px;
+    .code-item {
+        margin:5px; 
+        padding:4px 6px; 
+        border:1px solid #888; 
+        border-radius:5px; 
         background:#2c2c2c;
     }
     </style>
@@ -128,14 +98,14 @@ st.markdown(
 st.markdown("<div class='workspace'>", unsafe_allow_html=True)
 
 # =====================
-# 📥 Panel Ingreso (más pequeño)
+# 📥 Panel Ingreso
 # =====================
 with st.container():
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     st.markdown("### 📥 Ingresar códigos")
     input_codigos = st.text_area(
         "Códigos desde Excel",
-        height=200,  # 🔽 más bajo
+        height=600,
         label_visibility="collapsed"
     )
 
@@ -162,7 +132,7 @@ with st.container():
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =====================
-# ✅ Panel Encontrados (hover con preview)
+# ✅ Panel Encontrados
 # =====================
 with st.container():
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
@@ -172,7 +142,6 @@ with st.container():
         st.markdown(f"### ✅ Encontrados ({len(encontrados)})")
 
         if encontrados:
-            # Botón ZIP
             zip_buffer = BytesIO()
             with ZipFile(zip_buffer, "w") as zip_file:
                 for codigo, img in encontrados:
@@ -188,35 +157,23 @@ with st.container():
                 key="descargar_zip"
             )
 
-            # Códigos con hover preview
-            html_codes = ""
             for codigo, img in encontrados:
-                buffered = BytesIO()
-                img.save(buffered, format="JPEG")
-                img_base64 = base64.b64encode(buffered.getvalue()).decode()
-                html_codes += f"""
-                <div class="code-hover">
-                    {codigo}
-                    <div class="preview">
-                        <img src="data:image/jpeg;base64,{img_base64}"/>
-                    </div>
-                </div>
-                """
-            st.markdown(html_codes, unsafe_allow_html=True)
+                st.markdown(f"<div class='code-item'>{codigo}</div>", unsafe_allow_html=True)
+                st.image(img, width=180)
         else:
             st.info("No se encontró ningún código válido.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =====================
-# ❌ Panel No encontrados (sin rectángulo grande)
+# ❌ Panel No encontrados
 # =====================
 with st.container():
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     if "no_encontrados" in st.session_state:
         no_encontrados = st.session_state["no_encontrados"]
         st.markdown(f"### ❌ No encontrados ({len(no_encontrados)})")
-        html_codes = "".join([f"<span class='code-miss'>{c}</span>" for c in no_encontrados])
-        st.markdown(html_codes, unsafe_allow_html=True)
+        for codigo in no_encontrados:
+            st.markdown(f"<div class='code-item'>{codigo}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
