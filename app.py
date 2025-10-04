@@ -54,21 +54,25 @@ def obtener_imagen(id_drive):
 # ========================================
 # 🌐 INTERFAZ PRINCIPAL (pantalla completa)
 # ========================================
-# 🔧 Ajustar ancho de la página a 100%
+# 🔧 Forzar ancho completo
 st.markdown(
     """
     <style>
     .block-container {
-        max-width: 100% !important;
-        padding-left: 2rem;
-        padding-right: 2rem;
+        max-width: 100vw !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    .stColumn {
+        flex: 1 !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-col_input, col_result = st.columns([1, 2])
+# ✅ Sidebar delgada (1) + panel resultados amplio (4)
+col_input, col_result = st.columns([1, 4])
 
 with col_input:
     st.markdown("### 📥 Ingresar códigos")
