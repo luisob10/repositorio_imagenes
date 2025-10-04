@@ -114,34 +114,55 @@ if "encontrados" in st.session_state:
                 key="descargar_zip"
             )
 
-    # --- Mostrar códigos encontrados ---
+    # --- Mostrar códigos encontrados con preview al pasar el cursor ---
     if encontrados:
+        st.markdown(
+            """
+            <style>
+            .code-box {
+                display:inline-block;
+                position:relative;
+                margin:5px;
+                padding:3px 6px;
+                border:1px solid #4CAF50;
+                border-radius:5px;
+                cursor:pointer;
+            }
+            .code-box .preview {
+                display:none;
+                position:absolute;
+                top:28px;
+                left:0;
+                z-index:100;
+                border:1px solid #ccc;
+                background:white;
+                padding:2px;
+            }
+            .code-box:hover .preview {
+                display:block;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        html_codes = ""
         for codigo, img in encontrados:
             buffered = BytesIO()
             img.save(buffered, format="JPEG")
             img_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-            st.markdown(
-                f"""
-                <div style="position:relative; display:inline-block; margin:5px;">
-                    <span style="cursor:pointer; padding:3px 6px; border:1px solid #4CAF50; border-radius:5px;">
-                        {codigo}
-                    </span>
-                    <div style="position:absolute; top:25px; left:0; display:none; z-index:100; 
-                                border:1px solid #ccc; background:white; padding:2px;">
-                        <img src="data:image/jpeg;base64,{img_base64}" width="150"/>
-                    </div>
+            html_codes += f"""
+            <div class="code-box">
+                {codigo}
+                <div class="preview">
+                    <img src="data:image/jpeg;base64,{img_base64}" width="150"/>
                 </div>
-                <script>
-                const container = document.currentScript.previousElementSibling;
-                const imgDiv = container.querySelector('div');
-                const span = container.querySelector('span');
-                span.onmouseover = () => imgDiv.style.display='block';
-                span.onmouseout = () => imgDiv.style.display='none';
-                </script>
-                """,
-                unsafe_allow_html=True
-            )
+            </div>
+            """
+
+        st.markdown(html_codes, unsafe_allow_html=True)
+
     else:
         st.info("No se encontró ningún código válido.")
 
