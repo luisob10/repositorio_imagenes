@@ -14,11 +14,10 @@ PASSWORD = "123"  # cámbiala a la tuya
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
-# --- Ingresar también con tecla ENTER ---
 if not st.session_state["autenticado"]:
     with st.form("login_form"):
         clave = st.text_input("🔐 Ingresa la clave de acceso", type="password")
-        entrar = st.form_submit_button("Entrar")  # Se activa también con ENTER
+        entrar = st.form_submit_button("Entrar")
 
     if entrar:
         if clave == PASSWORD:
@@ -63,9 +62,6 @@ input_codigos = st.text_area(
     label_visibility="collapsed"
 )
 
-if "resaltado" not in st.session_state:
-    st.session_state["resaltado"] = ""
-
 # ========================================
 # 🔍 BUSCAR CÓDIGOS
 # ========================================
@@ -74,79 +70,55 @@ if st.button("Buscar"):
         st.warning("Por favor ingresa al menos un código.")
     else:
         codigos = [c.strip() for c in input_codigos.replace("\n", ",").split(",") if c.strip()]
-        encontrados, no_encontrados = [], []
+        encontrados = []
 
         for codigo in codigos:
             if codigo in drive_ids:
                 img = obtener_imagen(drive_ids[codigo])
                 if img:
                     encontrados.append((codigo, img))
-                else:
-                    no_encontrados.append(codigo)
-            else:
-                no_encontrados.append(codigo)
 
-        # Guardar resultados en session_state
         st.session_state["encontrados"] = encontrados
-        st.session_state["no_encontrados"] = no_encontrados
 
 # ========================================
-# 🧾 MOSTRAR RESULTADOS (si existen)
+# 🧾 MOSTRAR SOLO CÓDIGOS ENCONTRADOS
 # ========================================
 if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
-    no_encontrados = st.session_state["no_encontrados"]
 
-    col1, col2 = st.columns(2)
+    st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
 
-    # ========================================
-    # ✅ CÓDIGOS ENCONTRADOS
-    # ========================================
-    with col1:
-        st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+    if encontrados:
+        for codigo, img in encontrados:
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG")
+            img_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-        if encontrados:
-            for codigo, img in encontrados:
-                buffered = BytesIO()
-                img.save(buffered, format="JPEG")
-                img_base64 = base64.b64encode(buffered.getvalue()).decode()
-                st.markdown(
-                    f"""
-                    <div style="position:relative; display:inline-block; margin:5px;">
-                        <span style="cursor:pointer; color:white;">{codigo}</span>
-                        <div style="position:absolute; top:20px; left:0; display:none; z-index:100; border:1px solid #ccc; background:white; padding:2px;">
-                            <img src="data:image/jpeg;base64,{img_base64}" width="200"/>
-                        </div>
+            st.markdown(
+                f"""
+                <div style="position:relative; display:inline-block; margin:5px;">
+                    <span style="cursor:pointer; color:white; background:#4CAF50; padding:3px 6px; border-radius:5px;">{codigo}</span>
+                    <div style="position:absolute; top:25px; left:0; display:none; z-index:100; 
+                                border:1px solid #ccc; background:white; padding:2px;">
+                        <img src="data:image/jpeg;base64,{img_base64}" width="150"/>
                     </div>
-                    <script>
-                    const container = document.currentScript.previousElementSibling;
-                    const imgDiv = container.querySelector('div');
-                    container.onmouseover = () => imgDiv.style.display='block';
-                    container.onmouseout = () => imgDiv.style.display='none';
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
-        else:
-            st.info("No se encontró ningún código válido.")
+                </div>
+                <script>
+                const container = document.currentScript.previousElementSibling;
+                const imgDiv = container.querySelector('div');
+                container.onmouseover = () => imgDiv.style.display='block';
+                container.onmouseout = () => imgDiv.style.display='none';
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
+    else:
+        st.info("No se encontró ningún código válido.")
 
     # ========================================
-    # ⚠️ CÓDIGOS NO ENCONTRADOS
-    # ========================================
-    with col2:
-        st.markdown("#### ⚠️ Códigos no encontrados")
-        if no_encontrados:
-            for codigo in no_encontrados:
-                st.markdown(f"- {codigo}")
-        else:
-            st.info("Todos los códigos fueron encontrados.")
-
-    # ========================================
-    # 💾 DESCARGAR TODO (ZIP)
+    # 💾 DESCARGAR TODO (ZIP) - solo botón
     # ========================================
     if encontrados:
-        st.markdown("#### ⬇️ Descargar todo")
-
         zip_buffer = BytesIO()
         with ZipFile(zip_buffer, "w") as zip_file:
             for codigo, img in encontrados:
