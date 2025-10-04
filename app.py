@@ -70,7 +70,8 @@ if st.button("Buscar"):
         st.warning("Por favor ingresa al menos un código.")
     else:
         codigos = [c.strip() for c in input_codigos.replace("\n", ",").split(",") if c.strip()]
-        encontrados, no_encontrados = [], []
+        encontrados = []
+        no_encontrados = []
 
         for codigo in codigos:
             if codigo in drive_ids:
@@ -92,69 +93,63 @@ if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
-    col1, col2 = st.columns(2)
-
-    # ========================================
-    # ✅ CÓDIGOS ENCONTRADOS
-    # ========================================
+    # --- Sección Encontrados con botón al costado ---
+    col1, col2 = st.columns([3, 1])
     with col1:
-        # título + botón en la misma fila
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
-        with c2:
-            if encontrados:
-                zip_buffer = BytesIO()
-                from zipfile import ZipFile
-                with ZipFile(zip_buffer, "w") as zip_file:
-                    for codigo, img in encontrados:
-                        img_bytes = BytesIO()
-                        img.save(img_bytes, format="JPEG")
-                        zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
-                zip_buffer.seek(0)
-
-                st.download_button(
-                    label="📦 Descargar todo",
-                    data=zip_buffer,
-                    file_name="imagenes_encontradas.zip",
-                    mime="application/zip",
-                    key="descargar_zip"
-                )
-
-        if encontrados:
-            for codigo, img in encontrados:
-                buffered = BytesIO()
-                img.save(buffered, format="JPEG")
-                img_base64 = base64.b64encode(buffered.getvalue()).decode()
-
-                st.markdown(
-                    f"""
-                    <div style="position:relative; display:inline-block; margin:5px;">
-                        <span style="cursor:pointer; color:black;">{codigo}</span>
-                        <div style="position:absolute; top:20px; left:0; display:none; z-index:100;
-                                    border:1px solid #ccc; background:white; padding:2px;">
-                            <img src="data:image/jpeg;base64,{img_base64}" width="120"/>
-                        </div>
-                    </div>
-                    <script>
-                    const container = document.currentScript.previousElementSibling;
-                    const imgDiv = container.querySelector('div');
-                    container.onmouseover = () => imgDiv.style.display='block';
-                    container.onmouseout = () => imgDiv.style.display='none';
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
-        else:
-            st.info("No se encontró ningún código válido.")
-
-    # ========================================
-    # ⚠️ CÓDIGOS NO ENCONTRADOS
-    # ========================================
+        st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
     with col2:
-        st.markdown(f"#### ⚠️ Códigos no encontrados ({len(no_encontrados)})")
-        if no_encontrados:
-            for codigo in no_encontrados:
-                st.markdown(f"- {codigo}")
-        else:
-            st.info("Todos los códigos fueron encontrados.")
+        if encontrados:
+            zip_buffer = BytesIO()
+            with ZipFile(zip_buffer, "w") as zip_file:
+                for codigo, img in encontrados:
+                    img_bytes = BytesIO()
+                    img.save(img_bytes, format="JPEG")
+                    zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
+            zip_buffer.seek(0)
+            st.download_button(
+                label="📦 Descargar todo",
+                data=zip_buffer,
+                file_name="imagenes_encontradas.zip",
+                mime="application/zip",
+                key="descargar_zip"
+            )
+
+    # --- Mostrar códigos encontrados ---
+    if encontrados:
+        for codigo, img in encontrados:
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG")
+            img_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+            st.markdown(
+                f"""
+                <div style="position:relative; display:inline-block; margin:5px;">
+                    <span style="cursor:pointer; padding:3px 6px; border:1px solid #4CAF50; border-radius:5px;">
+                        {codigo}
+                    </span>
+                    <div style="position:absolute; top:25px; left:0; display:none; z-index:100; 
+                                border:1px solid #ccc; background:white; padding:2px;">
+                        <img src="data:image/jpeg;base64,{img_base64}" width="150"/>
+                    </div>
+                </div>
+                <script>
+                const container = document.currentScript.previousElementSibling;
+                const imgDiv = container.querySelector('div');
+                const span = container.querySelector('span');
+                span.onmouseover = () => imgDiv.style.display='block';
+                span.onmouseout = () => imgDiv.style.display='none';
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
+    else:
+        st.info("No se encontró ningún código válido.")
+
+    # --- Mostrar códigos no encontrados ---
+    if no_encontrados:
+        st.markdown(f"#### ❌ Códigos no encontrados ({len(no_encontrados)})")
+        for codigo in no_encontrados:
+            st.markdown(
+                f"<span style='margin:5px; padding:3px 6px; border:1px solid #aaa; border-radius:5px;'>{codigo}</span>",
+                unsafe_allow_html=True
+            )
