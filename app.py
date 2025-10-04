@@ -137,37 +137,21 @@ if "encontrados" in st.session_state:
     with col2:
         st.markdown("#### ⚠️ Códigos no encontrados")
         if no_encontrados:
-            for codigo in no_encontrados:
-                payload = json.dumps({"codigo_faltante": codigo})
-                st.markdown(
-                    f"<span style='cursor:pointer; color:white;' "
-                    f"onclick='window.parent.postMessage({payload}, \"*\")'>{codigo}</span><br>",
-                    unsafe_allow_html=True
-                )
+            # Mostrar tabla de códigos no encontrados
+            df_no_encontrados = pd.DataFrame(no_encontrados, columns=["Códigos no encontrados"])
+            st.dataframe(df_no_encontrados, use_container_width=True)
+
+            # Botón para descargar en CSV
+            csv_buffer = BytesIO()
+            df_no_encontrados.to_csv(csv_buffer, index=False)
+            st.download_button(
+                label="⬇️ Descargar no encontrados (CSV)",
+                data=csv_buffer.getvalue(),
+                file_name="codigos_no_encontrados.csv",
+                mime="text/csv"
+            )
         else:
             st.info("Todos los códigos fueron encontrados.")
-
-    # ========================================
-    # 🔍 Resaltado de códigos faltantes
-    # ========================================
-    st.markdown("""
-    <script>
-    window.addEventListener('message', (event) => {
-        const data = event.data;
-        if (data && data.codigo_faltante) {
-            const textarea = parent.document.querySelector('textarea');
-            if (textarea) {
-                const text = textarea.value;
-                const start = text.indexOf(data.codigo_faltante);
-                if (start !== -1) {
-                    textarea.focus();
-                    textarea.setSelectionRange(start, start + data.codigo_faltante.length);
-                }
-            }
-        }
-    });
-    </script>
-    """, unsafe_allow_html=True)
 
     # ========================================
     # 💾 DESCARGAR TODO (ZIP)
