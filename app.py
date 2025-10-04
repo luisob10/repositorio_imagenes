@@ -5,7 +5,6 @@ from io import BytesIO
 from PIL import Image
 import base64
 from zipfile import ZipFile
-import json
 
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
@@ -137,19 +136,8 @@ if "encontrados" in st.session_state:
     with col2:
         st.markdown("#### ⚠️ Códigos no encontrados")
         if no_encontrados:
-            # Mostrar tabla de códigos no encontrados
-            df_no_encontrados = pd.DataFrame(no_encontrados, columns=["Códigos no encontrados"])
-            st.dataframe(df_no_encontrados, use_container_width=True)
-
-            # Botón para descargar en CSV
-            csv_buffer = BytesIO()
-            df_no_encontrados.to_csv(csv_buffer, index=False)
-            st.download_button(
-                label="⬇️ Descargar no encontrados (CSV)",
-                data=csv_buffer.getvalue(),
-                file_name="codigos_no_encontrados.csv",
-                mime="text/csv"
-            )
+            for codigo in no_encontrados:
+                st.markdown(f"- {codigo}")
         else:
             st.info("Todos los códigos fueron encontrados.")
 
