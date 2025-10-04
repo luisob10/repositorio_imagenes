@@ -156,7 +156,7 @@ if "encontrados" in st.session_state:
             <div class="code-box">
                 {codigo}
                 <div class="preview">
-                    <img src="data:image/jpeg;base64,{img_base64}" width="150"/>
+                    <img src="data:image/jpeg;base64,{img_base64}" width="350"/>
                 </div>
             </div>
             """
