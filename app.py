@@ -131,12 +131,18 @@ if "encontrados" in st.session_state:
             .code-box .preview {
                 display:none;
                 position:absolute;
-                top:28px;
-                left:0;
+                top:0;
+                left:110%;   /* 👈 aparece a la derecha */
                 z-index:100;
                 border:1px solid #ccc;
                 background:white;
                 padding:2px;
+                white-space:nowrap;
+            }
+            .code-box .preview img {
+                width:350px !important;   /* 👈 tamaño fijo */
+                max-width:350px !important;
+                height:auto !important;
             }
             .code-box:hover .preview {
                 display:block;
@@ -156,7 +162,7 @@ if "encontrados" in st.session_state:
             <div class="code-box">
                 {codigo}
                 <div class="preview">
-                    <img src="data:image/jpeg;base64,{img_base64}" width="350"/>
+                    <img src="data:image/jpeg;base64,{img_base64}"/>
                 </div>
             </div>
             """
