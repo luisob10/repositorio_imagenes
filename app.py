@@ -52,6 +52,13 @@ def obtener_imagen(id_drive):
     return None
 
 # ========================================
+# 🔧 NORMALIZAR CÓDIGOS
+# ========================================
+def normalizar_codigo(codigo):
+    """Quita espacios, extensión .jpg y convierte a minúsculas para comparación."""
+    return codigo.strip().replace(".jpg", "").replace(".JPG", "").lower()
+
+# ========================================
 # 🌐 INTERFAZ PRINCIPAL
 # ========================================
 st.markdown("### 📥 Ingresar códigos")
@@ -63,7 +70,7 @@ input_codigos = st.text_area(
 )
 
 # ========================================
-# 🔍 BUSCAR CÓDIGOS
+# 🔍 BUSCAR CÓDIGOS NORMALIZADOS
 # ========================================
 if st.button("Buscar"):
     if not input_codigos.strip():
@@ -74,10 +81,19 @@ if st.button("Buscar"):
         no_encontrados = []
 
         for codigo in codigos:
-            if codigo in drive_ids:
-                img = obtener_imagen(drive_ids[codigo])
+            cod_norm = normalizar_codigo(codigo)
+            encontrado = None
+
+            # Buscar en el CSV normalizando también
+            for key in drive_ids:
+                if normalizar_codigo(key) == cod_norm:
+                    encontrado = key
+                    break
+
+            if encontrado:
+                img = obtener_imagen(drive_ids[encontrado])
                 if img:
-                    encontrados.append((codigo, img))
+                    encontrados.append((encontrado, img))
                 else:
                     no_encontrados.append(codigo)
             else:
