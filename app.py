@@ -7,9 +7,9 @@ import base64
 from zipfile import ZipFile
 
 # ========================================
-# 🔐 LOGIN
+# 🔐 CONFIGURACIÓN DE LOGIN
 # ========================================
-PASSWORD = "123"
+PASSWORD = "123"  # cámbiala a la tuya
 
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
@@ -28,7 +28,7 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # ========================================
-# 📁 LECTURA CSV
+# 📁 LECTURA DE ARCHIVO CSV DE IMÁGENES
 # ========================================
 @st.cache_data
 def cargar_csv():
@@ -42,7 +42,7 @@ def cargar_csv():
 drive_ids = cargar_csv()
 
 # ========================================
-# 🧠 OBTENER IMAGEN
+# 🧠 FUNCIÓN PARA OBTENER IMÁGENES
 # ========================================
 def obtener_imagen(id_drive):
     url = f"https://drive.google.com/uc?export=download&id={id_drive}"
@@ -52,77 +52,26 @@ def obtener_imagen(id_drive):
     return None
 
 # ========================================
-# 🌐 AJUSTES VISUALES
+# 🌐 INTERFAZ PRINCIPAL (pantalla completa)
 # ========================================
+# 🔧 Ajustar ancho de la página a 100%
 st.markdown(
     """
     <style>
-    /* Layout ancho completo */
     .block-container {
         max-width: 100% !important;
-        padding: 1rem 2rem;
-    }
-    /* Estilo tipo Photoshop */
-    body {
-        background-color: #1e1e1e;
-        color: #f0f0f0;
-        font-family: "Segoe UI", sans-serif;
-    }
-    .stTextArea textarea {
-        background-color: #2d2d2d;
-        color: #f0f0f0;
-        border-radius: 8px;
-        font-size: 14px;
-    }
-    .code-box {
-        display:inline-block;
-        position:relative;
-        margin:8px;
-        padding:6px 10px;
-        border:1px solid #4CAF50;
-        border-radius:6px;
-        background-color:#2b2b2b;
-        box-shadow:0 2px 5px rgba(0,0,0,0.3);
-        cursor:pointer;
-        transition:all 0.2s ease-in-out;
-    }
-    .code-box:hover {
-        background-color:#3a3a3a;
-        transform:scale(1.05);
-    }
-    .code-box .preview {
-        display:none;
-        position:absolute;
-        top:0;
-        left:110%;
-        z-index:100;
-        border:1px solid #ccc;
-        background:white;
-        padding:4px;
-        border-radius:6px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.5);
-    }
-    .code-box .preview img {
-        width:350px !important;
-        max-width:350px !important;
-        height:auto !important;
-        border-radius:4px;
-    }
-    .code-box:hover .preview {
-        display:block;
+        padding-left: 2rem;
+        padding-right: 2rem;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# ========================================
-# 🖼️ INTERFAZ PRINCIPAL
-# ========================================
 col_input, col_result = st.columns([1, 2])
 
 with col_input:
-    st.markdown("## 📥 Ingresar códigos")
+    st.markdown("### 📥 Ingresar códigos")
     input_codigos = st.text_area(
         "Códigos desde Excel", 
         height=600,  
@@ -155,10 +104,10 @@ with col_result:
         encontrados = st.session_state["encontrados"]
         no_encontrados = st.session_state["no_encontrados"]
 
-        # --- Header + botón descargar ---
+        # --- Sección Encontrados con botón al costado ---
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown(f"### ✅ Códigos encontrados ({len(encontrados)})")
+            st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
         with col2:
             if encontrados:
                 zip_buffer = BytesIO()
@@ -176,9 +125,44 @@ with col_result:
                     key="descargar_zip"
                 )
 
-        # --- Grid de encontrados ---
+        # --- Mostrar códigos encontrados con preview ---
         if encontrados:
-            html_codes = "<div style='display:flex; flex-wrap:wrap;'>"
+            st.markdown(
+                """
+                <style>
+                .code-box {
+                    display:inline-block;
+                    position:relative;
+                    margin:5px;
+                    padding:3px 6px;
+                    border:1px solid #4CAF50;
+                    border-radius:5px;
+                    cursor:pointer;
+                }
+                .code-box .preview {
+                    display:none;
+                    position:absolute;
+                    top:0;
+                    left:110%;
+                    z-index:100;
+                    border:1px solid #ccc;
+                    background:white;
+                    padding:2px;
+                }
+                .code-box .preview img {
+                    width:350px !important;
+                    max-width:350px !important;
+                    height:auto !important;
+                }
+                .code-box:hover .preview {
+                    display:block;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+
+            html_codes = ""
             for codigo, img in encontrados:
                 buffered = BytesIO()
                 img.save(buffered, format="JPEG")
@@ -192,16 +176,17 @@ with col_result:
                     </div>
                 </div>
                 """
-            html_codes += "</div>"
+
             st.markdown(html_codes, unsafe_allow_html=True)
+
         else:
             st.info("No se encontró ningún código válido.")
 
-        # --- Mostrar no encontrados ---
+        # --- Mostrar códigos no encontrados ---
         if no_encontrados:
-            st.markdown(f"### ❌ Códigos no encontrados ({len(no_encontrados)})")
-            html_no = "<div style='display:flex; flex-wrap:wrap;'>"
+            st.markdown(f"#### ❌ Códigos no encontrados ({len(no_encontrados)})")
             for codigo in no_encontrados:
-                html_no += f"<div style='margin:6px; padding:6px 10px; border:1px solid #aaa; border-radius:6px; background:#3a3a3a;'>{codigo}</div>"
-            html_no += "</div>"
-            st.markdown(html_no, unsafe_allow_html=True)
+                st.markdown(
+                    f"<span style='margin:5px; padding:3px 6px; border:1px solid #aaa; border-radius:5px;'>{codigo}</span>",
+                    unsafe_allow_html=True
+                )
