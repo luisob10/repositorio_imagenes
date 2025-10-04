@@ -52,15 +52,29 @@ def obtener_imagen(id_drive):
     return None
 
 # ========================================
-# 🌐 INTERFAZ PRINCIPAL (2 columnas pantalla completa)
+# 🌐 INTERFAZ PRINCIPAL (pantalla completa)
 # ========================================
+# 🔧 Ajustar ancho de la página a 100%
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 100% !important;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 col_input, col_result = st.columns([1, 2])
 
 with col_input:
     st.markdown("### 📥 Ingresar códigos")
     input_codigos = st.text_area(
         "Códigos desde Excel", 
-        height=500,  
+        height=600,  
         label_visibility="collapsed"
     )
 
@@ -97,7 +111,6 @@ with col_result:
         with col2:
             if encontrados:
                 zip_buffer = BytesIO()
-                from zipfile import ZipFile
                 with ZipFile(zip_buffer, "w") as zip_file:
                     for codigo, img in encontrados:
                         img_bytes = BytesIO()
@@ -130,12 +143,11 @@ with col_result:
                     display:none;
                     position:absolute;
                     top:0;
-                    left:110%;   /* 👈 aparece a la derecha */
+                    left:110%;
                     z-index:100;
                     border:1px solid #ccc;
                     background:white;
                     padding:2px;
-                    white-space:nowrap;
                 }
                 .code-box .preview img {
                     width:350px !important;
