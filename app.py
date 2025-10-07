@@ -64,8 +64,8 @@ def normalizar_codigo(codigo):
 st.markdown("### 📥 Ingresar códigos")
 
 input_codigos = st.text_area(
-    "Códigos desde Excel", 
-    height=300,  
+    "Códigos desde Excel",
+    height=300,
     label_visibility="collapsed"
 )
 
@@ -110,13 +110,14 @@ if "encontrados" in st.session_state:
     no_encontrados = st.session_state["no_encontrados"]
 
     # --- Sección Encontrados con botones ---
-    col1, col2, col3, col4 = st.columns([2.5, 1, 1, 1])
-    with col1:
-        st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+    if encontrados:
+        col1, col2, col3, col4 = st.columns([2.5, 1, 1, 1])
 
-    # Botón Descargar todo
-    with col2:
-        if encontrados:
+        with col1:
+            st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+
+        # 📦 Descargar todo
+        with col2:
             zip_buffer = BytesIO()
             with ZipFile(zip_buffer, "w") as zip_file:
                 for codigo, img in encontrados:
@@ -132,9 +133,8 @@ if "encontrados" in st.session_state:
                 key="descargar_zip"
             )
 
-    # --- 🔹 Botón IM1 ---
-    with col3:
-        if encontrados:
+        # ⬇️ IM1
+        with col3:
             zip_buffer_im1 = BytesIO()
             with ZipFile(zip_buffer_im1, "w") as zip_file:
                 for codigo, img in encontrados:
@@ -151,9 +151,8 @@ if "encontrados" in st.session_state:
                 key="descargar_im1"
             )
 
-    # --- 🔹 Botón IM2 ---
-    with col4:
-        if encontrados:
+        # ⬇️ IM2
+        with col4:
             zip_buffer_im2 = BytesIO()
             with ZipFile(zip_buffer_im2, "w") as zip_file:
                 for codigo, img in encontrados:
