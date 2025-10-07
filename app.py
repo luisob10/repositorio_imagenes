@@ -125,30 +125,37 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
+    # --- CSS para hover preview ---
     st.markdown(
         """
         <style>
         .code-box {
             display:block;
             position:relative;
-            margin:3px 0;
-            padding:4px 8px;
+            margin:4px 0;
+            padding:5px 10px;
             border:1px solid #4CAF50;
             border-radius:5px;
-            font-size:14px;
+            font-size:15px;
             color:white;
             background-color:#333;
             cursor:pointer;
+            z-index:1;
+        }
+        .code-box:hover {
+            background-color:#444;
         }
         .code-box .preview {
             display:none;
             position:absolute;
             top:28px;
             left:0;
-            z-index:999;
+            z-index:9999;
             border:1px solid #ccc;
             background:white;
-            padding:2px;
+            padding:3px;
+            border-radius:5px;
+            box-shadow:0px 2px 10px rgba(0,0,0,0.3);
         }
         .code-box:hover .preview {
             display:block;
@@ -176,7 +183,8 @@ if "encontrados" in st.session_state:
                     """
                 else:
                     html_codes += f"<div class='code-box'>{key}</div>"
-            st.markdown(html_codes, unsafe_allow_html=True)
+            # Renderizamos el bloque HTML con previews visibles
+            st.components.v1.html(f"<div>{html_codes}</div>", height=500, scrolling=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
@@ -186,10 +194,11 @@ if "encontrados" in st.session_state:
         if no_encontrados:
             for codigo in no_encontrados:
                 st.markdown(f"<div style='color:white; font-size:13px;'>{codigo}</div>", unsafe_allow_html=True)
-        # Eliminado el texto "Todos los códigos fueron encontrados ✅"
+        else:
+            st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 BOTONES DE DESCARGA (sin reiniciar app)
+    # 📦 BOTONES DE DESCARGA
     # ========================================
     if encontrados:
         colA, colB, colC = st.columns(3)
