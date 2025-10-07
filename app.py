@@ -6,6 +6,7 @@ from zipfile import ZipFile
 from PIL import Image
 import re
 import base64
+import imghdr
 
 # ========================================
 # 🔐 LOGIN
@@ -55,8 +56,15 @@ def obtener_imagen_b64(file_id):
     except Exception:
         return None
 
+def obtener_extension(contenido):
+    """Detecta la extensión real del archivo a partir de su contenido binario."""
+    formato = imghdr.what(None, contenido)
+    if formato == "jpeg":
+        return "jpg"
+    return formato if formato else "jpg"
+
 def generar_zip(encontrados, sufijo=None):
-    """Genera un archivo ZIP con las imágenes encontradas (IM1, IM2 o todas)."""
+    """Genera un ZIP con las imágenes encontradas (IM1, IM2 o todas) respetando su formato original."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
@@ -67,9 +75,11 @@ def generar_zip(encontrados, sufijo=None):
                 continue
             url = f"https://drive.google.com/uc?export=download&id={file_id}"
             try:
-                resp = requests.get(url)
+                resp = requests.get(url, timeout=10)
                 if resp.status_code == 200:
-                    zipf.writestr(f"{codigo}.jpg", resp.content)
+                    contenido = resp.content
+                    ext = obtener_extension(contenido)
+                    zipf.writestr(f"{codigo}.{ext}", contenido)
             except Exception:
                 pass
     buffer.seek(0)
@@ -170,7 +180,7 @@ if "encontrados" in st.session_state:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 DESCARGAS (sin disparar nueva búsqueda)
+    # 📦 DESCARGAS (sin nueva búsqueda)
     # ========================================
     colA, colB, colC = st.columns(3)
 
