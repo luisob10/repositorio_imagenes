@@ -109,10 +109,12 @@ if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
-    # --- Sección Encontrados con botón al costado ---
-    col1, col2 = st.columns([3, 1])
+    # --- Sección Encontrados con botones ---
+    col1, col2, col3, col4 = st.columns([2.5, 1, 1, 1])
     with col1:
         st.markdown(f"#### ✅ Códigos encontrados ({len(encontrados)})")
+
+    # Botón Descargar todo
     with col2:
         if encontrados:
             zip_buffer = BytesIO()
@@ -130,7 +132,45 @@ if "encontrados" in st.session_state:
                 key="descargar_zip"
             )
 
-    # --- Mostrar códigos encontrados con preview al pasar el cursor ---
+    # --- 🔹 Botón IM1 ---
+    with col3:
+        if encontrados:
+            zip_buffer_im1 = BytesIO()
+            with ZipFile(zip_buffer_im1, "w") as zip_file:
+                for codigo, img in encontrados:
+                    if codigo.endswith("_1"):
+                        img_bytes = BytesIO()
+                        img.save(img_bytes, format="JPEG")
+                        zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
+            zip_buffer_im1.seek(0)
+            st.download_button(
+                label="⬇️ IM1",
+                data=zip_buffer_im1,
+                file_name="imagenes_IM1.zip",
+                mime="application/zip",
+                key="descargar_im1"
+            )
+
+    # --- 🔹 Botón IM2 ---
+    with col4:
+        if encontrados:
+            zip_buffer_im2 = BytesIO()
+            with ZipFile(zip_buffer_im2, "w") as zip_file:
+                for codigo, img in encontrados:
+                    if codigo.endswith("_2"):
+                        img_bytes = BytesIO()
+                        img.save(img_bytes, format="JPEG")
+                        zip_file.writestr(f"{codigo}.jpg", img_bytes.getvalue())
+            zip_buffer_im2.seek(0)
+            st.download_button(
+                label="⬇️ IM2",
+                data=zip_buffer_im2,
+                file_name="imagenes_IM2.zip",
+                mime="application/zip",
+                key="descargar_im2"
+            )
+
+    # --- Mostrar códigos encontrados con preview ---
     if encontrados:
         st.markdown(
             """
@@ -178,7 +218,6 @@ if "encontrados" in st.session_state:
             """
 
         st.markdown(html_codes, unsafe_allow_html=True)
-
     else:
         st.info("No se encontró ningún código válido.")
 
@@ -187,6 +226,6 @@ if "encontrados" in st.session_state:
         st.markdown(f"#### ❌ Códigos no encontrados ({len(no_encontrados)})")
         for codigo in no_encontrados:
             st.markdown(
-                f"<span style='margin:5px; padding:3px 6px; border:1px solid #aaa; border-radius:5px;'>{codigo}</span>",
+                f"<span style='margin:5px; padding:3px 6px; border:1px solid #aaa; border-radius:5px; color:white;'>{codigo}</span>",
                 unsafe_allow_html=True
             )
