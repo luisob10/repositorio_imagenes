@@ -56,7 +56,7 @@ def obtener_imagen_b64(file_id):
         resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             img = Image.open(BytesIO(resp.content)).convert("RGB")
-            img.thumbnail((400, 400))  # ajusta el tamaño máximo
+            img.thumbnail((250, 250))  # ajusta el tamaño máximo del tooltip
             buffered = BytesIO()
             img.save(buffered, format="JPEG")
             return base64.b64encode(buffered.getvalue()).decode()
@@ -140,8 +140,8 @@ if "encontrados" in st.session_state:
         }
         .tooltip .tooltip-img {
             visibility: hidden;
-            width: 400px;
-            height: 400px;
+            width: 250px;
+            height: 250px;
             background-color: #000;
             border: 2px solid #555;
             border-radius: 8px;
@@ -173,7 +173,7 @@ if "encontrados" in st.session_state:
                     html_codes += f"""
                     <div class="tooltip">{key}
                         <div class="tooltip-img">
-                            <img src="data:image/jpeg;base64,{img_b64}" width="400" height="400" style="object-fit:contain;"/>
+                            <img src="data:image/jpeg;base64,{img_b64}" width="250" height="250" style="object-fit:contain;"/>
                         </div>
                     </div><br>
                     """
