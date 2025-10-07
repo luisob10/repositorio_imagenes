@@ -3,8 +3,9 @@ import pandas as pd
 import requests
 from io import BytesIO
 from zipfile import ZipFile
-import re
 from PIL import Image
+import re
+import base64
 
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
@@ -46,7 +47,22 @@ except Exception as e:
 # 🔧 FUNCIONES AUXILIARES
 # ========================================
 def normalizar_codigo(c):
-    return re.sub(r"[^A-Za-z0-9\-]", "", str(c)).strip().upper()
+    return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
+
+def obtener_imagen_b64(file_id):
+    """Descarga la imagen desde Google Drive y la convierte a Base64."""
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            img = Image.open(BytesIO(resp.content)).convert("RGB")
+            img.thumbnail((400, 400))  # ajusta el tamaño máximo
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG")
+            return base64.b64encode(buffered.getvalue()).decode()
+    except Exception:
+        pass
+    return None
 
 def generar_zip(encontrados, sufijo=None):
     buffer = BytesIO()
@@ -84,8 +100,7 @@ if buscar:
         st.stop()
 
     codigos = [normalizar_codigo(c) for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
-    encontrados = []
-    no_encontrados = []
+    encontrados, no_encontrados = [], []
 
     for codigo in codigos:
         coincidencias = [
@@ -111,12 +126,60 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
+    # --- Estilos para tooltip ---
+    st.markdown(
+        """
+        <style>
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            color: white;
+            font-size: 13px;
+            margin: 2px 0;
+            cursor: pointer;
+        }
+        .tooltip .tooltip-img {
+            visibility: hidden;
+            width: 400px;
+            height: 400px;
+            background-color: #000;
+            border: 2px solid #555;
+            border-radius: 8px;
+            position: absolute;
+            z-index: 999;
+            top: 20px;
+            left: 120%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .tooltip:hover .tooltip-img {
+            visibility: visible;
+            opacity: 1;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     # --- Columna izquierda: encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
+            html_codes = ""
             for key in encontrados:
-                st.markdown(f"<div style='color:white; font-size:13px;'>{key}</div>", unsafe_allow_html=True)
+                file_id = drive_ids.get(key)
+                img_b64 = obtener_imagen_b64(file_id)
+                if img_b64:
+                    html_codes += f"""
+                    <div class="tooltip">{key}
+                        <div class="tooltip-img">
+                            <img src="data:image/jpeg;base64,{img_b64}" width="400" height="400" style="object-fit:contain;"/>
+                        </div>
+                    </div><br>
+                    """
+                else:
+                    html_codes += f"<div style='color:white; font-size:13px;'>{key}</div>"
+            st.markdown(html_codes, unsafe_allow_html=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
