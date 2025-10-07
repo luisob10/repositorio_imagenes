@@ -6,7 +6,6 @@ from zipfile import ZipFile
 from PIL import Image
 import re
 import base64
-import imghdr
 
 # ========================================
 # 🔐 LOGIN
@@ -57,11 +56,15 @@ def obtener_imagen_b64(file_id):
         return None
 
 def obtener_extension(contenido):
-    """Detecta la extensión real del archivo a partir de su contenido binario."""
-    formato = imghdr.what(None, contenido)
-    if formato == "jpeg":
-        return "jpg"
-    return formato if formato else "jpg"
+    """Detecta la extensión real usando PIL en lugar de imghdr."""
+    try:
+        img = Image.open(BytesIO(contenido))
+        formato = img.format.lower()
+        if formato == "jpeg":
+            return "jpg"
+        return formato
+    except Exception:
+        return "jpg"  # Valor por defecto si no se puede detectar
 
 def generar_zip(encontrados, sufijo=None):
     """Genera un ZIP con las imágenes encontradas (IM1, IM2 o todas) respetando su formato original."""
@@ -122,7 +125,7 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
-    # --- Estilos CSS para los códigos ---
+    # --- Estilos CSS ---
     st.markdown("""
         <style>
         .codigo {
@@ -154,7 +157,7 @@ if "encontrados" in st.session_state:
         </style>
     """, unsafe_allow_html=True)
 
-    # --- Columna izquierda: encontrados ---
+    # --- Códigos encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         html = ""
@@ -173,14 +176,14 @@ if "encontrados" in st.session_state:
                 html += f"<div class='codigo'>{codigo}</div>"
         st.markdown(html, unsafe_allow_html=True)
 
-    # --- Columna derecha: no encontrados ---
+    # --- Códigos no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         for c in no_encontrados:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 DESCARGAS (sin nueva búsqueda)
+    # 📦 DESCARGAS
     # ========================================
     colA, colB, colC = st.columns(3)
 
