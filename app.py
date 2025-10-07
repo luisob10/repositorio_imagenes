@@ -4,6 +4,8 @@ import requests
 from io import BytesIO
 from zipfile import ZipFile
 import re
+from PIL import Image
+import base64
 
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
@@ -14,27 +16,22 @@ if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
 if not st.session_state["autenticado"]:
-    st.title("")  # eliminar título grande
     clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave_input")
 
-    # Detectar Enter automáticamente
-    if "enter_pressed" not in st.session_state:
-        st.session_state["enter_pressed"] = False
-
-    if st.session_state["enter_pressed"] or st.button("Entrar"):
+    # Permitir Enter sin recargar mal
+    if st.session_state.get("last_clave") != clave and clave:
+        if clave == PASSWORD:
+            st.session_state["autenticado"] = True
+            st.session_state["last_clave"] = clave
+            st.rerun()
+        else:
+            st.error("❌ Clave incorrecta")
+    elif st.button("Entrar"):
         if clave == PASSWORD:
             st.session_state["autenticado"] = True
             st.rerun()
         else:
             st.error("❌ Clave incorrecta")
-
-    # Verificar si se presionó Enter (sin JS)
-    if clave and st.session_state.get("last_clave") != clave:
-        st.session_state["enter_pressed"] = True
-        st.session_state["last_clave"] = clave
-    else:
-        st.session_state["enter_pressed"] = False
-
     st.stop()
 
 # ========================================
@@ -53,54 +50,43 @@ except Exception as e:
 def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
-def descargar_zip_por_sufijo(sufijo, encontrados):
-    """Descarga todas las imágenes que terminan en _{sufijo} y estén en los encontrados"""
-    buffer = BytesIO()
-    with ZipFile(buffer, "w") as zip_file:
-        for key in encontrados:
-            if key.endswith(f"_{sufijo}"):
-                file_id = drive_ids[key]
-                url = f"https://drive.google.com/uc?id={file_id}"
-                try:
-                    resp = requests.get(url)
-                    zip_file.writestr(f"{key}.jpg", resp.content)
-                except Exception:
-                    pass
-    buffer.seek(0)
-    st.download_button(
-        label=f"⬇️ Descargar IM{sufijo}",
-        data=buffer,
-        file_name=f"imagenes_IM{sufijo}.zip",
-        mime="application/zip",
-        key=f"dl_im{sufijo}"
-    )
+def obtener_imagen_b64(file_id):
+    """Obtiene una imagen de Drive en formato base64 para previsualización"""
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    try:
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            img = Image.open(BytesIO(resp.content))
+            buffered = BytesIO()
+            img.save(buffered, format="JPEG")
+            return base64.b64encode(buffered.getvalue()).decode()
+    except:
+        return None
+    return None
 
-def descargar_todo(encontrados):
-    """Descarga todas las imágenes encontradas"""
+def generar_zip(encontrados, sufijo=None):
+    """Genera un archivo ZIP con las imágenes (opcionalmente filtradas por sufijo)"""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zip_file:
         for key in encontrados:
+            if sufijo and not key.endswith(f"_{sufijo}"):
+                continue
             file_id = drive_ids[key]
-            url = f"https://drive.google.com/uc?id={file_id}"
+            url = f"https://drive.google.com/uc?export=download&id={file_id}"
             try:
                 resp = requests.get(url)
                 zip_file.writestr(f"{key}.jpg", resp.content)
             except Exception:
                 pass
     buffer.seek(0)
-    st.download_button(
-        label="⬇️ Descargar todo",
-        data=buffer,
-        file_name="imagenes_todas.zip",
-        mime="application/zip",
-        key="dl_todo"
-    )
+    return buffer
 
 # ========================================
 # 🧠 INTERFAZ PRINCIPAL
 # ========================================
-st.markdown("<h6 style='margin-bottom:0;'>Ingresar códigos</h6>", unsafe_allow_html=True)
-input_codigos = st.text_area("", height=200, placeholder="Pega o escribe los códigos aquí...")
+
+st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
+input_codigos = st.text_area("", height=180, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
 
 buscar = st.button("🔍 Buscar")
 
@@ -123,6 +109,8 @@ if buscar:
         else:
             no_encontrados.append(codigo)
 
+    encontrados = sorted(list(set(encontrados)), key=lambda x: x.upper())
+
     # ========================================
     # 📋 RESULTADOS EN DOS COLUMNAS
     # ========================================
@@ -133,16 +121,16 @@ if buscar:
         """
         <style>
         .code-box {
-            display:inline-block;
+            display:block;
             position:relative;
-            margin:4px;
+            margin:3px 0;
             padding:4px 8px;
             border:1px solid #4CAF50;
             border-radius:5px;
-            cursor:pointer;
-            font-size:13px;
+            font-size:14px;
             color:white;
             background-color:#333;
+            cursor:pointer;
         }
         .code-box .preview {
             display:none;
@@ -169,14 +157,17 @@ if buscar:
             html_codes = ""
             for key in encontrados:
                 file_id = drive_ids[key]
-                url = f"https://drive.google.com/uc?id={file_id}"
-                html_codes += f"""
-                <div class="code-box">{key}
-                    <div class="preview">
-                        <img src="{url}" width="180"/>
+                img_b64 = obtener_imagen_b64(file_id)
+                if img_b64:
+                    html_codes += f"""
+                    <div class="code-box">{key}
+                        <div class="preview">
+                            <img src="data:image/jpeg;base64,{img_b64}" width="200"/>
+                        </div>
                     </div>
-                </div>
-                """
+                    """
+                else:
+                    html_codes += f"<div class='code-box'>{key}</div>"
             st.markdown(html_codes, unsafe_allow_html=True)
         else:
             st.info("No se encontró ningún código válido.")
@@ -187,22 +178,48 @@ if buscar:
         if no_encontrados:
             for codigo in no_encontrados:
                 st.markdown(
-                    f"<span style='color:white; font-size:13px;'>{codigo}</span>",
+                    f"<div style='color:white; font-size:13px;'>{codigo}</div>",
                     unsafe_allow_html=True
                 )
         else:
             st.info("Todos los códigos fueron encontrados ✅")
 
     # ========================================
-    # 📦 BOTONES DE DESCARGA (SOLO SI HAY ENCONTRADOS)
+    # 📦 BOTONES DE DESCARGA
     # ========================================
     if encontrados:
-        st.markdown("---")
-        st.markdown("### 📥 Descargas disponibles")
+        colA, colB, colC = st.columns(3)
+        with colA:
+            if any(k.endswith("_1") for k in encontrados):
+                buffer1 = generar_zip(encontrados, "1")
+                st.download_button(
+                    label="⬇️ Descargar IM1",
+                    data=buffer1,
+                    file_name="imagenes_IM1.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    key="btn_im1"
+                )
 
-        if any(k.endswith("_1") for k in encontrados):
-            descargar_zip_por_sufijo("1", encontrados)
-        if any(k.endswith("_2") for k in encontrados):
-            descargar_zip_por_sufijo("2", encontrados)
+        with colB:
+            if any(k.endswith("_2") for k in encontrados):
+                buffer2 = generar_zip(encontrados, "2")
+                st.download_button(
+                    label="⬇️ Descargar IM2",
+                    data=buffer2,
+                    file_name="imagenes_IM2.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    key="btn_im2"
+                )
 
-        descargar_todo(encontrados)
+        with colC:
+            buffer_all = generar_zip(encontrados)
+            st.download_button(
+                label="⬇️ Descargar todo",
+                data=buffer_all,
+                file_name="imagenes_todas.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="btn_todo"
+            )
