@@ -3,27 +3,24 @@ import pandas as pd
 import requests
 from io import BytesIO
 from zipfile import ZipFile
-import re
 from PIL import Image
 import base64
+import re
 
 # ========================================
-# 🔐 CONFIGURACIÓN DE LOGIN
+# 🔐 LOGIN
 # ========================================
 PASSWORD = "123"
 
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
-# ---- FORMULARIO LOGIN ----
 if not st.session_state["autenticado"]:
-    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave_input")
-
+    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave")
     if clave == PASSWORD:
         st.session_state["autenticado"] = True
         st.rerun()
-    elif clave and st.session_state.get("last_clave") != clave:
-        st.session_state["last_clave"] = clave
+    elif clave:
         st.error("❌ Clave incorrecta")
     st.stop()
 
@@ -44,7 +41,7 @@ def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
-    """Descarga imagen de Google Drive y la devuelve como base64."""
+    """Descarga imagen de Google Drive y la devuelve base64."""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
         resp = requests.get(url, timeout=10)
@@ -58,7 +55,7 @@ def obtener_imagen_b64(file_id):
     return None
 
 def generar_zip(encontrados, sufijo=None):
-    """Genera ZIP filtrando por sufijo si aplica."""
+    """Genera ZIP con filtrado opcional por sufijo."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zip_file:
         for key in encontrados:
@@ -80,8 +77,8 @@ def generar_zip(encontrados, sufijo=None):
 # ========================================
 # 🧠 INTERFAZ PRINCIPAL
 # ========================================
-st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
-input_codigos = st.text_area("", height=150, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
+st.markdown("<h6 style='margin-top:-30px;'>Ingresar códigos</h6>", unsafe_allow_html=True)
+input_codigos = st.text_area("", height=130, label_visibility="collapsed", placeholder="Pega o escribe los códigos...")
 
 buscar = st.button("🔍 Buscar")
 
@@ -107,114 +104,83 @@ if buscar:
     st.session_state["no_encontrados"] = sorted(list(set(no_encontrados)), key=lambda x: x.upper())
 
 # ========================================
-# 🧾 MOSTRAR RESULTADOS
+# 🧾 RESULTADOS
 # ========================================
 if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2, gap="small")
 
-    # ---- CSS HOVER PREVIEW ----
+    # ---- ESTILOS ----
     st.markdown("""
         <style>
-        .code-box {
-            display:block;
-            position:relative;
-            margin:4px 0;
-            padding:6px 10px;
-            border:1px solid #4CAF50;
-            border-radius:5px;
-            font-size:15px;
+        .codigo-item {
             color:white;
-            background-color:#333;
-            cursor:pointer;
-        }
-        .code-box:hover {
-            background-color:#444;
-        }
-        .preview {
-            display:none;
-            position:absolute;
-            top:30px;
-            left:0;
-            z-index:9999;
-            background:white;
-            border:1px solid #aaa;
-            padding:3px;
-            border-radius:5px;
-            box-shadow:0px 2px 10px rgba(0,0,0,0.4);
-        }
-        .code-box:hover .preview {
-            display:block;
+            background-color:#222;
+            padding:4px 8px;
+            margin:2px 0;
+            border-radius:6px;
+            font-size:14px;
+            display:inline-block;
+            width:100%;
+            cursor:default;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # ---- Columna izquierda: encontrados ----
+    # ---- Códigos encontrados ----
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
-            html_codes = ""
+            html = ""
             for key in encontrados:
                 file_id = drive_ids[key]
                 img_b64 = obtener_imagen_b64(file_id)
-                if img_b64:
-                    html_codes += f"""
-                    <div class="code-box">{key}
-                        <div class="preview">
-                            <img src="data:image/jpeg;base64,{img_b64}" width="220">
-                        </div>
-                    </div>
-                    """
-                else:
-                    html_codes += f"<div class='code-box'>{key}</div>"
-
-            st.components.v1.html(f"<div>{html_codes}</div>", height=520, scrolling=True)
+                tooltip = f"<img src='data:image/jpeg;base64,{img_b64}' width='220'>" if img_b64 else "(Sin vista previa)"
+                html += f"<div class='codigo-item' title='{tooltip}'>{key}</div>"
+            st.components.v1.html(f"<div>{html}</div>", height=520, scrolling=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
-    # ---- Columna derecha: no encontrados ----
+    # ---- Códigos no encontrados ----
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         if no_encontrados:
             for codigo in no_encontrados:
-                st.markdown(f"<div style='color:white; font-size:13px;'>{codigo}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='codigo-item'>{codigo}</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
-    # ---- BOTONES DE DESCARGA ----
+    # ---- Botones de descarga ----
     if encontrados:
         colA, colB, colC = st.columns(3)
 
         with colA:
             if any(k.endswith("_1") for k in encontrados):
                 st.download_button(
-                    label="⬇️ Descargar IM1",
+                    "⬇️ Descargar IM1",
                     data=generar_zip(encontrados, "1"),
                     file_name="imagenes_IM1.zip",
                     mime="application/zip",
-                    use_container_width=True,
-                    key="btn_im1"
+                    use_container_width=True
                 )
 
         with colB:
             if any(k.endswith("_2") for k in encontrados):
                 st.download_button(
-                    label="⬇️ Descargar IM2",
+                    "⬇️ Descargar IM2",
                     data=generar_zip(encontrados, "2"),
                     file_name="imagenes_IM2.zip",
                     mime="application/zip",
-                    use_container_width=True,
-                    key="btn_im2"
+                    use_container_width=True
                 )
 
         with colC:
             st.download_button(
-                label="⬇️ Descargar todo",
+                "⬇️ Descargar todo",
                 data=generar_zip(encontrados),
                 file_name="imagenes_todas.zip",
                 mime="application/zip",
-                use_container_width=True,
-                key="btn_todo"
+                use_container_width=True
             )
