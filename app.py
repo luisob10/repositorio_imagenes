@@ -110,25 +110,47 @@ if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
-    col1, col2 = st.columns(2, gap="small")
-
     # ---- ESTILOS ----
     st.markdown("""
         <style>
+        /* Ajuste general del espacio entre elementos */
+        div[data-testid="stHorizontalBlock"] {
+            gap: 0px !important;
+        }
+        div.block-container {
+            padding-top: 0rem;
+            padding-bottom: 0rem;
+        }
+        .element-container {
+            margin-bottom: 0rem !important;
+        }
+        .stMarkdown {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Estilo de los códigos */
         .codigo-item {
             color: white !important;
             background-color: #222;
             padding: 4px 8px;
-            margin: 2px 0;
+            margin: 1px 0;
             border-radius: 6px;
             font-size: 14px;
             display: inline-block;
             width: 100%;
             cursor: default;
         }
-        h5 { color: white; }
+
+        h5 { 
+            color: white; 
+            margin-top: 2px !important; 
+            margin-bottom: 4px !important; 
+        }
         </style>
     """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2, gap="small")
 
     # ---- Códigos encontrados ----
     with col1:
@@ -140,7 +162,7 @@ if "encontrados" in st.session_state:
                 img_b64 = obtener_imagen_b64(file_id)
                 tooltip = f"<img src='data:image/jpeg;base64,{img_b64}' width='220'>" if img_b64 else "(Sin vista previa)"
                 html += f"<div class='codigo-item' title='{tooltip}'>{key}</div>"
-            st.components.v1.html(f"<div>{html}</div>", height=520, scrolling=True)
+            st.components.v1.html(f"<div style='margin-bottom:0px'>{html}</div>", height=520, scrolling=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
@@ -153,9 +175,11 @@ if "encontrados" in st.session_state:
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
-    # ---- Botones de descarga ----
+    # ---- Botones de descarga (sin espacio adicional) ----
     if encontrados:
-        colA, colB, colC = st.columns(3)
+        st.markdown("<div style='margin-top:-10px;'></div>", unsafe_allow_html=True)
+
+        colA, colB, colC = st.columns(3, gap="small")
 
         with colA:
             if any(k.endswith("_1") for k in encontrados):
