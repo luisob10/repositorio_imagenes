@@ -38,9 +38,11 @@ except Exception as e:
 # ⚙️ FUNCIONES
 # ========================================
 def normalizar_codigo(c):
-    return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
+    """Limpia el código y lo convierte a mayúsculas para comparar sin importar el caso."""
+    return re.sub(r"[^A-Za-z0-9\-]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
+    """Descarga una imagen desde Google Drive y la convierte a base64."""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
         r = requests.get(url, timeout=10)
@@ -54,6 +56,7 @@ def obtener_imagen_b64(file_id):
         return None
 
 def generar_zip(encontrados, sufijo=None):
+    """Genera un archivo ZIP con las imágenes encontradas (IM1, IM2 o todas)."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
@@ -84,11 +87,13 @@ if st.button("🔍 Buscar"):
         st.warning("Por favor ingresa al menos un código.")
         st.stop()
 
-    codigos = [normalizar_codigo(c) for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
+    codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
 
+    # 🔎 Comparación sin importar mayúsculas/minúsculas
     for codigo in codigos:
-        matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo)]
+        codigo_norm = normalizar_codigo(codigo)
+        matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
         if matches:
             encontrados.extend(matches)
         else:
@@ -107,6 +112,7 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
+    # --- Estilos CSS para los códigos ---
     st.markdown("""
         <style>
         .codigo {
@@ -164,7 +170,7 @@ if "encontrados" in st.session_state:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 DESCARGAS (sin disparar búsqueda)
+    # 📦 DESCARGAS (sin disparar nueva búsqueda)
     # ========================================
     colA, colB, colC = st.columns(3)
 
