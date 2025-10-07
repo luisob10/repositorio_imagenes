@@ -111,30 +111,12 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
-    st.markdown(
-        """
-        <style>
-        .code-box {
-            display:block;
-            margin:3px 0;
-            padding:4px 8px;
-            border:1px solid #4CAF50;
-            border-radius:5px;
-            font-size:14px;
-            color:white;
-            background-color:#333;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     # --- Columna izquierda: encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
-            html_codes = "".join(f"<div class='code-box'>{key}</div>" for key in encontrados)
-            st.markdown(html_codes, unsafe_allow_html=True)
+            for key in encontrados:
+                st.markdown(f"<div style='color:white; font-size:13px;'>{key}</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
