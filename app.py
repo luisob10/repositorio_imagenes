@@ -17,7 +17,7 @@ if "autenticado" not in st.session_state:
 
 if not st.session_state["autenticado"]:
     st.title("🔐 Ingreso")
-    clave = st.text_input("Ingrese la clave de acceso", type="password", key="clave")
+    clave = st.text_input("Ingrese la clave de acceso", type="password")
 
     if st.button("Entrar") or (clave and st.session_state.get("enter_pressed", False)):
         if clave == PASSWORD:
@@ -26,10 +26,7 @@ if not st.session_state["autenticado"]:
         else:
             st.error("Clave incorrecta")
 
-    # Permitir ingresar con ENTER
     st.session_state["enter_pressed"] = st.session_state.get("enter_pressed", False)
-    if st.session_state["enter_pressed"]:
-        st.session_state["enter_pressed"] = False
 else:
     # ========================================
     # 📂 CARGA DEL CSV
@@ -51,11 +48,7 @@ else:
     # 🧩 INTERFAZ PRINCIPAL
     # ========================================
     st.title("📸 Ingresar Códigos")
-    codigos_usuario = st.text_area(
-        "",
-        height=200,
-        placeholder="Escriba o pegue los códigos aquí...",
-    )
+    codigos_usuario = st.text_area("", height=200, placeholder="Escriba o pegue los códigos aquí...")
 
     if st.button("Buscar"):
         if not codigos_usuario.strip():
@@ -66,64 +59,84 @@ else:
         encontrados = {}
         no_encontrados = []
 
+        # Buscar coincidencias parciales
         for codigo in codigos:
             coincidencias = [
                 key for key in drive_ids.keys()
                 if normalizar_codigo(key).startswith(codigo)
             ]
             if coincidencias:
-                for c in coincidencias:
-                    encontrados[c] = drive_ids[c]
+                encontrados[codigo] = coincidencias
             else:
                 no_encontrados.append(codigo)
 
         # ========================================
-        # 📋 RESULTADOS
+        # 📋 RESULTADOS EN DOS COLUMNAS
+        # ========================================
+        col1, col2 = st.columns(2)
+
+        # ---------------- CÓDIGOS ENCONTRADOS ----------------
+        with col1:
+            st.subheader("✅ Códigos encontrados")
+
+            if encontrados:
+                for base_codigo, lista_coincidencias in encontrados.items():
+                    st.markdown(f"**{base_codigo}**")
+
+                    # Mostrar botones IM1, IM2, ...
+                    botones = ""
+                    for i, key in enumerate(lista_coincidencias, start=1):
+                        file_id = drive_ids[key]
+                        img_url = f"https://drive.google.com/uc?id={file_id}"
+                        botones += f"""
+                        <a href="{img_url}" target="_blank" 
+                           style="background-color:#1E88E5; color:white; padding:6px 10px; 
+                                  border-radius:8px; text-decoration:none; margin-right:5px;"
+                           onmouseover="this.nextElementSibling.style.display='block'"
+                           onmouseout="this.nextElementSibling.style.display='none'">
+                           IM{i}
+                        </a>
+                        <div style="display:none; position:absolute; z-index:999; background:#000000dd; 
+                                    padding:4px; border-radius:8px;">
+                            <img src="{img_url}" style="width:180px; border-radius:6px;">
+                        </div>
+                        """
+                    st.markdown(botones, unsafe_allow_html=True)
+                    st.markdown("<hr>", unsafe_allow_html=True)
+            else:
+                st.info("No se encontró ningún código válido.")
+
+        # ---------------- CÓDIGOS NO ENCONTRADOS ----------------
+        with col2:
+            st.subheader("❌ Códigos no encontrados")
+            if no_encontrados:
+                for codigo in no_encontrados:
+                    st.markdown(
+                        f"<span style='color:white; text-decoration:underline;'>{codigo}</span>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.info("Todos los códigos fueron encontrados ✅")
+
+        # ========================================
+        # 📦 DESCARGAR ZIP
         # ========================================
         if encontrados:
-            st.subheader("✅ Códigos encontrados")
-            for codigo, file_id in encontrados.items():
-                img_url = f"https://drive.google.com/uc?id={file_id}"
-                st.markdown(
-                    f"<span style='color:white; cursor:pointer; text-decoration:underline;' "
-                    f"onClick=\"window.parent.postMessage({{'codigo_encontrado':'{codigo}'}}, '*')\">{codigo}</span>",
-                    unsafe_allow_html=True,
-                )
-                try:
-                    image = Image.open(BytesIO(requests.get(img_url).content))
-                    st.image(image, width=250)
-                except Exception:
-                    st.warning(f"No se pudo cargar la imagen para {codigo}")
-
-            # ========================================
-            # 📦 DESCARGAR ZIP
-            # ========================================
             zip_buffer = BytesIO()
             with ZipFile(zip_buffer, "w") as zip_file:
-                for codigo, file_id in encontrados.items():
-                    img_url = f"https://drive.google.com/uc?id={file_id}"
-                    try:
-                        response = requests.get(img_url)
-                        zip_file.writestr(f"{codigo}.jpg", response.content)
-                    except Exception:
-                        pass
+                for _, lista_coincidencias in encontrados.items():
+                    for key in lista_coincidencias:
+                        file_id = drive_ids[key]
+                        img_url = f"https://drive.google.com/uc?id={file_id}"
+                        try:
+                            response = requests.get(img_url)
+                            zip_file.writestr(f"{key}.jpg", response.content)
+                        except Exception:
+                            pass
             zip_buffer.seek(0)
-
             st.download_button(
                 label="⬇️ Descargar todo (ZIP)",
                 data=zip_buffer,
                 file_name="imagenes_encontradas.zip",
                 mime="application/zip",
             )
-
-        if no_encontrados:
-            st.subheader("❌ Códigos no encontrados")
-            for codigo in no_encontrados:
-                st.markdown(
-                    f"<span style='color:white; cursor:pointer; text-decoration:underline;' "
-                    f"onClick=\"window.parent.postMessage({{'codigo_faltante':'{codigo}'}}, '*')\">{codigo}</span>",
-                    unsafe_allow_html=True,
-                )
-
-        if not encontrados and not no_encontrados:
-            st.warning("No se encontró ningún código válido.")
