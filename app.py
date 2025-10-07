@@ -13,22 +13,25 @@ PASSWORD = "123"  # cámbiala a la tuya
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
-# --- PANTALLA DE LOGIN ---
 if not st.session_state["autenticado"]:
-    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password")
+    st.title("")  # eliminar título grande
+    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave_input")
 
-    # Permitir presionar Enter o botón
-    if st.button("Entrar") or (clave and st.session_state.get("enter_pressed")):
+    # Detectar Enter automáticamente
+    if "enter_pressed" not in st.session_state:
+        st.session_state["enter_pressed"] = False
+
+    if st.session_state["enter_pressed"] or st.button("Entrar"):
         if clave == PASSWORD:
             st.session_state["autenticado"] = True
             st.rerun()
         else:
             st.error("❌ Clave incorrecta")
 
-    # Detectar Enter con campo de texto (sin JS)
-    if clave and st.session_state.get("clave_anterior") != clave:
-        st.session_state["clave_anterior"] = clave
+    # Verificar si se presionó Enter (sin JS)
+    if clave and st.session_state.get("last_clave") != clave:
         st.session_state["enter_pressed"] = True
+        st.session_state["last_clave"] = clave
     else:
         st.session_state["enter_pressed"] = False
 
@@ -50,12 +53,13 @@ except Exception as e:
 def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
-def descargar_zip_por_sufijo(sufijo):
-    """Crea un ZIP con todas las imágenes que terminan en _{sufijo}"""
+def descargar_zip_por_sufijo(sufijo, encontrados):
+    """Descarga todas las imágenes que terminan en _{sufijo} y estén en los encontrados"""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zip_file:
-        for key, file_id in drive_ids.items():
+        for key in encontrados:
             if key.endswith(f"_{sufijo}"):
+                file_id = drive_ids[key]
                 url = f"https://drive.google.com/uc?id={file_id}"
                 try:
                     resp = requests.get(url)
@@ -63,41 +67,43 @@ def descargar_zip_por_sufijo(sufijo):
                 except Exception:
                     pass
     buffer.seek(0)
-    return buffer
+    st.download_button(
+        label=f"⬇️ Descargar IM{sufijo}",
+        data=buffer,
+        file_name=f"imagenes_IM{sufijo}.zip",
+        mime="application/zip",
+        key=f"dl_im{sufijo}"
+    )
+
+def descargar_todo(encontrados):
+    """Descarga todas las imágenes encontradas"""
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as zip_file:
+        for key in encontrados:
+            file_id = drive_ids[key]
+            url = f"https://drive.google.com/uc?id={file_id}"
+            try:
+                resp = requests.get(url)
+                zip_file.writestr(f"{key}.jpg", resp.content)
+            except Exception:
+                pass
+    buffer.seek(0)
+    st.download_button(
+        label="⬇️ Descargar todo",
+        data=buffer,
+        file_name="imagenes_todas.zip",
+        mime="application/zip",
+        key="dl_todo"
+    )
 
 # ========================================
 # 🧠 INTERFAZ PRINCIPAL
 # ========================================
+st.markdown("<h6 style='margin-bottom:0;'>Ingresar códigos</h6>", unsafe_allow_html=True)
 input_codigos = st.text_area("", height=200, placeholder="Pega o escribe los códigos aquí...")
 
 buscar = st.button("🔍 Buscar")
 
-# --- Botones IM1 e IM2 debajo del botón Buscar ---
-col_btn1, col_btn2 = st.columns(2)
-with col_btn1:
-    if st.button("⬇️ IM1 (Descargar _1)"):
-        zip_data = descargar_zip_por_sufijo("1")
-        st.download_button(
-            label="Descargar IM1.zip",
-            data=zip_data,
-            file_name="imagenes_IM1.zip",
-            mime="application/zip",
-            key="descarga_im1"
-        )
-with col_btn2:
-    if st.button("⬇️ IM2 (Descargar _2)"):
-        zip_data = descargar_zip_por_sufijo("2")
-        st.download_button(
-            label="Descargar IM2.zip",
-            data=zip_data,
-            file_name="imagenes_IM2.zip",
-            mime="application/zip",
-            key="descarga_im2"
-        )
-
-# ========================================
-# 🔍 BÚSQUEDA DE CÓDIGOS
-# ========================================
 if buscar:
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
@@ -122,42 +128,44 @@ if buscar:
     # ========================================
     col1, col2 = st.columns(2)
 
-    # ----- Códigos encontrados -----
-    with col1:
-        st.markdown("<h5 style='font-size:13px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
-        if encontrados:
-            st.markdown(
-                """
-                <style>
-                .code-box {
-                    display:inline-block;
-                    position:relative;
-                    margin:4px;
-                    padding:2px 5px;
-                    border:1px solid #4CAF50;
-                    border-radius:5px;
-                    cursor:pointer;
-                    font-size:11px;
-                    color:white;
-                }
-                .code-box .preview {
-                    display:none;
-                    position:absolute;
-                    top:25px;
-                    left:0;
-                    z-index:100;
-                    border:1px solid #ccc;
-                    background:white;
-                    padding:2px;
-                }
-                .code-box:hover .preview {
-                    display:block;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
+    # --- Estilo general ---
+    st.markdown(
+        """
+        <style>
+        .code-box {
+            display:inline-block;
+            position:relative;
+            margin:4px;
+            padding:4px 8px;
+            border:1px solid #4CAF50;
+            border-radius:5px;
+            cursor:pointer;
+            font-size:13px;
+            color:white;
+            background-color:#333;
+        }
+        .code-box .preview {
+            display:none;
+            position:absolute;
+            top:28px;
+            left:0;
+            z-index:100;
+            border:1px solid #ccc;
+            background:white;
+            padding:2px;
+        }
+        .code-box:hover .preview {
+            display:block;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
+    # --- Códigos encontrados ---
+    with col1:
+        st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
+        if encontrados:
             html_codes = ""
             for key in encontrados:
                 file_id = drive_ids[key]
@@ -173,14 +181,28 @@ if buscar:
         else:
             st.info("No se encontró ningún código válido.")
 
-    # ----- Códigos no encontrados -----
+    # --- Códigos no encontrados ---
     with col2:
-        st.markdown("<h5 style='font-size:13px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         if no_encontrados:
             for codigo in no_encontrados:
                 st.markdown(
-                    f"<span style='color:white; font-size:11px;'>{codigo}</span>",
+                    f"<span style='color:white; font-size:13px;'>{codigo}</span>",
                     unsafe_allow_html=True
                 )
         else:
             st.info("Todos los códigos fueron encontrados ✅")
+
+    # ========================================
+    # 📦 BOTONES DE DESCARGA (SOLO SI HAY ENCONTRADOS)
+    # ========================================
+    if encontrados:
+        st.markdown("---")
+        st.markdown("### 📥 Descargas disponibles")
+
+        if any(k.endswith("_1") for k in encontrados):
+            descargar_zip_por_sufijo("1", encontrados)
+        if any(k.endswith("_2") for k in encontrados):
+            descargar_zip_por_sufijo("2", encontrados)
+
+        descargar_todo(encontrados)
