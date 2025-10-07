@@ -18,7 +18,6 @@ if "autenticado" not in st.session_state:
 if not st.session_state["autenticado"]:
     clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave_input")
 
-    # Permitir Enter y botón sin errores
     if st.session_state.get("last_clave") != clave and clave:
         if clave == PASSWORD:
             st.session_state["autenticado"] = True
@@ -51,7 +50,6 @@ def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
-    """Obtiene imagen de Drive como base64 para previsualización."""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
         resp = requests.get(url, timeout=10)
@@ -65,7 +63,6 @@ def obtener_imagen_b64(file_id):
     return None
 
 def generar_zip(encontrados, sufijo=None):
-    """Genera un ZIP filtrado opcionalmente por sufijo (_1 o _2)."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zip_file:
         for key in encontrados:
@@ -116,12 +113,11 @@ if buscar:
 
     encontrados = sorted(list(set(encontrados)), key=lambda x: x.upper())
 
-    # Guardar en sesión (mantiene tras descargar)
     st.session_state["encontrados"] = encontrados
     st.session_state["no_encontrados"] = no_encontrados
 
 # ========================================
-# 🧾 MOSTRAR RESULTADOS (si ya existen)
+# 🧾 MOSTRAR RESULTADOS (si existen)
 # ========================================
 if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
@@ -129,7 +125,6 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
-    # --- Estilo general ---
     st.markdown(
         """
         <style>
@@ -163,7 +158,7 @@ if "encontrados" in st.session_state:
         unsafe_allow_html=True
     )
 
-    # --- Columna: Códigos encontrados ---
+    # --- Columna izquierda: encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
@@ -183,28 +178,22 @@ if "encontrados" in st.session_state:
                     html_codes += f"<div class='code-box'>{key}</div>"
             st.markdown(html_codes, unsafe_allow_html=True)
         else:
-            st.markdown(
-                "<div style='color:white; font-size:15px;'>No se encontraron códigos</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
 
-    # --- Columna: Códigos no encontrados ---
+    # --- Columna derecha: no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         if no_encontrados:
             for codigo in no_encontrados:
-                st.markdown(
-                    f"<div style='color:white; font-size:13px;'>{codigo}</div>",
-                    unsafe_allow_html=True
-                )
-        else:
-            st.info("Todos los códigos fueron encontrados ✅")
+                st.markdown(f"<div style='color:white; font-size:13px;'>{codigo}</div>", unsafe_allow_html=True)
+        # Eliminado el texto "Todos los códigos fueron encontrados ✅"
 
     # ========================================
-    # 📦 BOTONES DE DESCARGA
+    # 📦 BOTONES DE DESCARGA (sin reiniciar app)
     # ========================================
     if encontrados:
         colA, colB, colC = st.columns(3)
+
         with colA:
             if any(k.endswith("_1") for k in encontrados):
                 buffer1 = generar_zip(encontrados, "1")
@@ -214,7 +203,7 @@ if "encontrados" in st.session_state:
                     file_name="imagenes_IM1.zip",
                     mime="application/zip",
                     use_container_width=True,
-                    key="btn_im1"
+                    key="btn_im1",
                 )
 
         with colB:
@@ -226,7 +215,7 @@ if "encontrados" in st.session_state:
                     file_name="imagenes_IM2.zip",
                     mime="application/zip",
                     use_container_width=True,
-                    key="btn_im2"
+                    key="btn_im2",
                 )
 
         with colC:
@@ -237,5 +226,5 @@ if "encontrados" in st.session_state:
                 file_name="imagenes_todas.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="btn_todo"
+                key="btn_todo",
             )
