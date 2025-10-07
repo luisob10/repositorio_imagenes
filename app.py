@@ -82,20 +82,20 @@ if st.button("Buscar"):
 
         for codigo in codigos:
             cod_norm = normalizar_codigo(codigo)
-            encontrado = None
+            coincidencias = []
 
-            # Buscar en el CSV normalizando también
+            # Buscar coincidencias parciales (ej. IF1661 → IF1661_1, IF1661_2)
             for key in drive_ids:
-                if normalizar_codigo(key) == cod_norm:
-                    encontrado = key
-                    break
+                if normalizar_codigo(key).startswith(cod_norm):
+                    coincidencias.append(key)
 
-            if encontrado:
-                img = obtener_imagen(drive_ids[encontrado])
-                if img:
-                    encontrados.append((encontrado, img))
-                else:
-                    no_encontrados.append(codigo)
+            if coincidencias:
+                for encontrado in coincidencias:
+                    img = obtener_imagen(drive_ids[encontrado])
+                    if img:
+                        encontrados.append((encontrado, img))
+                    else:
+                        no_encontrados.append(codigo)
             else:
                 no_encontrados.append(codigo)
 
