@@ -5,7 +5,6 @@ from io import BytesIO
 from zipfile import ZipFile
 import re
 from PIL import Image
-import base64
 
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
@@ -47,20 +46,7 @@ except Exception as e:
 # 🔧 FUNCIONES AUXILIARES
 # ========================================
 def normalizar_codigo(c):
-    return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
-
-def obtener_imagen_b64(file_id):
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    try:
-        resp = requests.get(url, timeout=10)
-        if resp.status_code == 200:
-            img = Image.open(BytesIO(resp.content))
-            buffered = BytesIO()
-            img.save(buffered, format="JPEG")
-            return base64.b64encode(buffered.getvalue()).decode()
-    except Exception:
-        pass
-    return None
+    return re.sub(r"[^A-Za-z0-9\-]", "", str(c)).strip().upper()
 
 def generar_zip(encontrados, sufijo=None):
     buffer = BytesIO()
@@ -117,7 +103,7 @@ if buscar:
     st.session_state["no_encontrados"] = no_encontrados
 
 # ========================================
-# 🧾 MOSTRAR RESULTADOS (si existen)
+# 🧾 MOSTRAR RESULTADOS
 # ========================================
 if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
@@ -130,7 +116,6 @@ if "encontrados" in st.session_state:
         <style>
         .code-box {
             display:block;
-            position:relative;
             margin:3px 0;
             padding:4px 8px;
             border:1px solid #4CAF50;
@@ -138,20 +123,6 @@ if "encontrados" in st.session_state:
             font-size:14px;
             color:white;
             background-color:#333;
-            cursor:pointer;
-        }
-        .code-box .preview {
-            display:none;
-            position:absolute;
-            top:28px;
-            left:0;
-            z-index:999;
-            border:1px solid #ccc;
-            background:white;
-            padding:2px;
-        }
-        .code-box:hover .preview {
-            display:block;
         }
         </style>
         """,
@@ -162,20 +133,7 @@ if "encontrados" in st.session_state:
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
-            html_codes = ""
-            for key in encontrados:
-                file_id = drive_ids[key]
-                img_b64 = obtener_imagen_b64(file_id)
-                if img_b64:
-                    html_codes += f"""
-                    <div class="code-box">{key}
-                        <div class="preview">
-                            <img src="data:image/jpeg;base64,{img_b64}" width="220"/>
-                        </div>
-                    </div>
-                    """
-                else:
-                    html_codes += f"<div class='code-box'>{key}</div>"
+            html_codes = "".join(f"<div class='code-box'>{key}</div>" for key in encontrados)
             st.markdown(html_codes, unsafe_allow_html=True)
         else:
             st.markdown("<div style='color:white; font-size:15px;'>No se encontraron códigos</div>", unsafe_allow_html=True)
@@ -186,10 +144,9 @@ if "encontrados" in st.session_state:
         if no_encontrados:
             for codigo in no_encontrados:
                 st.markdown(f"<div style='color:white; font-size:13px;'>{codigo}</div>", unsafe_allow_html=True)
-        # Eliminado el texto "Todos los códigos fueron encontrados ✅"
 
     # ========================================
-    # 📦 BOTONES DE DESCARGA (sin reiniciar app)
+    # 📦 BOTONES DE DESCARGA
     # ========================================
     if encontrados:
         colA, colB, colC = st.columns(3)
