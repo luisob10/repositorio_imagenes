@@ -10,7 +10,7 @@ import base64
 # ========================================
 # 🔐 CONFIGURACIÓN DE LOGIN
 # ========================================
-PASSWORD = "123"  # cámbiala a la tuya
+PASSWORD = "123"
 
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
@@ -18,7 +18,7 @@ if "autenticado" not in st.session_state:
 if not st.session_state["autenticado"]:
     clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave_input")
 
-    # Permitir Enter sin recargar mal
+    # Permitir Enter y botón sin errores
     if st.session_state.get("last_clave") != clave and clave:
         if clave == PASSWORD:
             st.session_state["autenticado"] = True
@@ -35,7 +35,7 @@ if not st.session_state["autenticado"]:
     st.stop()
 
 # ========================================
-# 📂 CARGAR CSV DE IMÁGENES
+# 📂 CARGAR CSV
 # ========================================
 try:
     df = pd.read_csv("imagenes.csv")
@@ -51,31 +51,34 @@ def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
-    """Obtiene una imagen de Drive en formato base64 para previsualización"""
+    """Obtiene imagen de Drive como base64 para previsualización."""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
-        resp = requests.get(url)
+        resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             img = Image.open(BytesIO(resp.content))
             buffered = BytesIO()
             img.save(buffered, format="JPEG")
             return base64.b64encode(buffered.getvalue()).decode()
-    except:
-        return None
+    except Exception:
+        pass
     return None
 
 def generar_zip(encontrados, sufijo=None):
-    """Genera un archivo ZIP con las imágenes (opcionalmente filtradas por sufijo)"""
+    """Genera un ZIP filtrado opcionalmente por sufijo (_1 o _2)."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zip_file:
         for key in encontrados:
             if sufijo and not key.endswith(f"_{sufijo}"):
                 continue
-            file_id = drive_ids[key]
+            file_id = drive_ids.get(key)
+            if not file_id:
+                continue
             url = f"https://drive.google.com/uc?export=download&id={file_id}"
             try:
                 resp = requests.get(url)
-                zip_file.writestr(f"{key}.jpg", resp.content)
+                if resp.status_code == 200:
+                    zip_file.writestr(f"{key}.jpg", resp.content)
             except Exception:
                 pass
     buffer.seek(0)
@@ -84,12 +87,14 @@ def generar_zip(encontrados, sufijo=None):
 # ========================================
 # 🧠 INTERFAZ PRINCIPAL
 # ========================================
-
 st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
-input_codigos = st.text_area("", height=180, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
+input_codigos = st.text_area("", height=160, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
 
 buscar = st.button("🔍 Buscar")
 
+# ========================================
+# 🔍 BÚSQUEDA
+# ========================================
 if buscar:
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
@@ -111,9 +116,17 @@ if buscar:
 
     encontrados = sorted(list(set(encontrados)), key=lambda x: x.upper())
 
-    # ========================================
-    # 📋 RESULTADOS EN DOS COLUMNAS
-    # ========================================
+    # Guardar en sesión (mantiene tras descargar)
+    st.session_state["encontrados"] = encontrados
+    st.session_state["no_encontrados"] = no_encontrados
+
+# ========================================
+# 🧾 MOSTRAR RESULTADOS (si ya existen)
+# ========================================
+if "encontrados" in st.session_state:
+    encontrados = st.session_state["encontrados"]
+    no_encontrados = st.session_state["no_encontrados"]
+
     col1, col2 = st.columns(2)
 
     # --- Estilo general ---
@@ -137,7 +150,7 @@ if buscar:
             position:absolute;
             top:28px;
             left:0;
-            z-index:100;
+            z-index:999;
             border:1px solid #ccc;
             background:white;
             padding:2px;
@@ -150,7 +163,7 @@ if buscar:
         unsafe_allow_html=True
     )
 
-    # --- Códigos encontrados ---
+    # --- Columna: Códigos encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
@@ -162,7 +175,7 @@ if buscar:
                     html_codes += f"""
                     <div class="code-box">{key}
                         <div class="preview">
-                            <img src="data:image/jpeg;base64,{img_b64}" width="200"/>
+                            <img src="data:image/jpeg;base64,{img_b64}" width="220"/>
                         </div>
                     </div>
                     """
@@ -170,9 +183,12 @@ if buscar:
                     html_codes += f"<div class='code-box'>{key}</div>"
             st.markdown(html_codes, unsafe_allow_html=True)
         else:
-            st.info("No se encontró ningún código válido.")
+            st.markdown(
+                "<div style='color:white; font-size:15px;'>No se encontraron códigos</div>",
+                unsafe_allow_html=True
+            )
 
-    # --- Códigos no encontrados ---
+    # --- Columna: Códigos no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         if no_encontrados:
