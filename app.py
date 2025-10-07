@@ -4,8 +4,8 @@ import requests
 from io import BytesIO
 from zipfile import ZipFile
 from PIL import Image
-import base64
 import re
+import base64
 
 # ========================================
 # 🔐 LOGIN
@@ -20,7 +20,7 @@ if not st.session_state["autenticado"]:
     if clave == PASSWORD:
         st.session_state["autenticado"] = True
         st.rerun()
-    elif clave:
+    elif clave and clave != PASSWORD:
         st.error("❌ Clave incorrecta")
     st.stop()
 
@@ -41,7 +41,6 @@ def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
-    """Descarga imagen y la convierte a base64 para tooltip"""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
         r = requests.get(url, timeout=10)
@@ -55,7 +54,6 @@ def obtener_imagen_b64(file_id):
         return None
 
 def generar_zip(encontrados, sufijo=None):
-    """Crea un zip de imágenes"""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
@@ -66,9 +64,9 @@ def generar_zip(encontrados, sufijo=None):
                 continue
             url = f"https://drive.google.com/uc?export=download&id={file_id}"
             try:
-                r = requests.get(url)
-                if r.status_code == 200:
-                    zipf.writestr(f"{codigo}.jpg", r.content)
+                resp = requests.get(url)
+                if resp.status_code == 200:
+                    zipf.writestr(f"{codigo}.jpg", resp.content)
             except Exception:
                 pass
     buffer.seek(0)
@@ -80,12 +78,8 @@ def generar_zip(encontrados, sufijo=None):
 st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
 input_codigos = st.text_area("", height=160, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
 
-buscar = st.button("🔍 Buscar", key="buscar")
-
-# ========================================
-# 🔍 BÚSQUEDA — SOLO CUANDO SE PRESIONA “BUSCAR”
-# ========================================
-if buscar:
+# --- Botón buscar ---
+if st.button("🔍 Buscar"):
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
         st.stop()
@@ -102,12 +96,12 @@ if buscar:
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
-    st.session_state["busqueda_hecha"] = True
+    st.session_state["ultima_busqueda"] = input_codigos.strip()
 
 # ========================================
-# 📋 MOSTRAR RESULTADOS (si existen)
+# 📋 MOSTRAR RESULTADOS
 # ========================================
-if st.session_state.get("busqueda_hecha", False):
+if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
@@ -144,7 +138,7 @@ if st.session_state.get("busqueda_hecha", False):
         </style>
     """, unsafe_allow_html=True)
 
-    # --- Códigos encontrados ---
+    # --- Columna izquierda: encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         html = ""
@@ -163,14 +157,14 @@ if st.session_state.get("busqueda_hecha", False):
                 html += f"<div class='codigo'>{codigo}</div>"
         st.markdown(html, unsafe_allow_html=True)
 
-    # --- Códigos no encontrados ---
+    # --- Columna derecha: no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         for c in no_encontrados:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 DESCARGAS — SIN REEJECUTAR BÚSQUEDA VISUAL
+    # 📦 DESCARGAS (sin disparar búsqueda)
     # ========================================
     colA, colB, colC = st.columns(3)
 
@@ -179,11 +173,11 @@ if st.session_state.get("busqueda_hecha", False):
             buffer1 = generar_zip(encontrados, "1")
             st.download_button(
                 "⬇️ Descargar IM1",
-                data=buffer1,
-                file_name="imagenes_IM1.zip",
+                buffer1,
+                "imagenes_IM1.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="dl1"
+                key="desc1"
             )
 
     with colB:
@@ -191,20 +185,20 @@ if st.session_state.get("busqueda_hecha", False):
             buffer2 = generar_zip(encontrados, "2")
             st.download_button(
                 "⬇️ Descargar IM2",
-                data=buffer2,
-                file_name="imagenes_IM2.zip",
+                buffer2,
+                "imagenes_IM2.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="dl2"
+                key="desc2"
             )
 
     with colC:
         buffer_all = generar_zip(encontrados)
         st.download_button(
             "⬇️ Descargar todo",
-            data=buffer_all,
-            file_name="imagenes_todas.zip",
+            buffer_all,
+            "imagenes_todas.zip",
             mime="application/zip",
             use_container_width=True,
-            key="dl_all"
+            key="desc_all"
         )
