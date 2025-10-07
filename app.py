@@ -116,16 +116,17 @@ if "encontrados" in st.session_state:
     st.markdown("""
         <style>
         .codigo-item {
-            color:white;
-            background-color:#222;
-            padding:4px 8px;
-            margin:2px 0;
-            border-radius:6px;
-            font-size:14px;
-            display:inline-block;
-            width:100%;
-            cursor:default;
+            color: white !important;
+            background-color: #222;
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 6px;
+            font-size: 14px;
+            display: inline-block;
+            width: 100%;
+            cursor: default;
         }
+        h5 { color: white; }
         </style>
     """, unsafe_allow_html=True)
 
