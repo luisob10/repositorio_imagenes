@@ -17,19 +17,11 @@ if "autenticado" not in st.session_state:
 
 if not st.session_state["autenticado"]:
     clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave_input")
-    if st.session_state.get("last_clave") != clave and clave:
-        if clave == PASSWORD:
-            st.session_state["autenticado"] = True
-            st.session_state["last_clave"] = clave
-            st.rerun()
-        else:
-            st.error("❌ Clave incorrecta")
-    elif st.button("Entrar"):
-        if clave == PASSWORD:
-            st.session_state["autenticado"] = True
-            st.rerun()
-        else:
-            st.error("❌ Clave incorrecta")
+    if clave == PASSWORD:
+        st.session_state["autenticado"] = True
+        st.rerun()
+    elif clave and clave != PASSWORD:
+        st.error("❌ Clave incorrecta")
     st.stop()
 
 # ========================================
@@ -49,7 +41,6 @@ def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
-    """Convierte imagen a Base64 para mostrar en tooltip."""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
         r = requests.get(url, timeout=10)
@@ -63,7 +54,6 @@ def obtener_imagen_b64(file_id):
         return None
 
 def generar_zip(encontrados, sufijo=None):
-    """Genera un archivo ZIP con las imágenes seleccionadas."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
@@ -88,20 +78,8 @@ def generar_zip(encontrados, sufijo=None):
 st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
 input_codigos = st.text_area("", height=160, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
 
-# --- Detectar botón presionado ---
-buscar = st.button("🔍 Buscar", key="buscar_btn")
-descargar_im1 = st.session_state.get("descargar_im1", False)
-descargar_im2 = st.session_state.get("descargar_im2", False)
-descargar_todo = st.session_state.get("descargar_todo", False)
-
-# --- Bandera de búsqueda única ---
-if "busqueda_realizada" not in st.session_state:
-    st.session_state["busqueda_realizada"] = False
-
-# ========================================
-# 🚀 BLOQUE DE BÚSQUEDA (solo si presiono BUSCAR)
-# ========================================
-if buscar:
+# --- Botón buscar ---
+if st.button("🔍 Buscar"):
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
         st.stop()
@@ -118,12 +96,12 @@ if buscar:
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
-    st.session_state["busqueda_realizada"] = True
+    st.session_state["ultima_busqueda"] = input_codigos.strip()
 
 # ========================================
-# 📋 MOSTRAR RESULTADOS (sin volver a buscar)
+# 📋 MOSTRAR RESULTADOS
 # ========================================
-if st.session_state.get("busqueda_realizada", False):
+if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
@@ -160,6 +138,7 @@ if st.session_state.get("busqueda_realizada", False):
         </style>
     """, unsafe_allow_html=True)
 
+    # --- Columna izquierda: encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         html = ""
@@ -178,13 +157,14 @@ if st.session_state.get("busqueda_realizada", False):
                 html += f"<div class='codigo'>{codigo}</div>"
         st.markdown(html, unsafe_allow_html=True)
 
+    # --- Columna derecha: no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         for c in no_encontrados:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 DESCARGAS — NO REBUSCAN
+    # 📦 DESCARGAS (sin disparar búsqueda)
     # ========================================
     colA, colB, colC = st.columns(3)
 
@@ -197,7 +177,7 @@ if st.session_state.get("busqueda_realizada", False):
                 "imagenes_IM1.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="btn_im1"
+                key="desc1"
             )
 
     with colB:
@@ -209,7 +189,7 @@ if st.session_state.get("busqueda_realizada", False):
                 "imagenes_IM2.zip",
                 mime="application/zip",
                 use_container_width=True,
-                key="btn_im2"
+                key="desc2"
             )
 
     with colC:
@@ -220,5 +200,5 @@ if st.session_state.get("busqueda_realizada", False):
             "imagenes_todas.zip",
             mime="application/zip",
             use_container_width=True,
-            key="btn_all"
+            key="desc_all"
         )
