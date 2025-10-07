@@ -93,8 +93,12 @@ input_codigos = st.text_area("", height=160, label_visibility="collapsed", place
 buscar = st.button("🔍 Buscar")
 
 # ========================================
-# 🔍 PROCESAR SOLO CUANDO SE HACE CLICK EN BUSCAR
+# 🚀 CONTROL DE BÚSQUEDA ÚNICA
 # ========================================
+if "busqueda_realizada" not in st.session_state:
+    st.session_state["busqueda_realizada"] = False
+
+# Ejecuta la búsqueda solo si se presiona el botón “Buscar”
 if buscar:
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
@@ -115,11 +119,12 @@ if buscar:
 
     st.session_state["encontrados"] = sorted(list(set(encontrados)), key=lambda x: x.upper())
     st.session_state["no_encontrados"] = no_encontrados
+    st.session_state["busqueda_realizada"] = True
 
 # ========================================
-# 🧾 MOSTRAR RESULTADOS (SIN VOLVER A BUSCAR)
+# 🧾 MOSTRAR RESULTADOS (SIN REEJECUTAR BÚSQUEDA)
 # ========================================
-if "encontrados" in st.session_state and st.session_state["encontrados"]:
+if st.session_state.get("busqueda_realizada", False):
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state.get("no_encontrados", [])
 
@@ -163,7 +168,6 @@ if "encontrados" in st.session_state and st.session_state["encontrados"]:
     # --- Columna izquierda: encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
-
         html_codes = ""
         for key in encontrados:
             file_id = drive_ids.get(key)
@@ -183,12 +187,12 @@ if "encontrados" in st.session_state and st.session_state["encontrados"]:
     # --- Columna derecha: no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
-        if st.session_state["no_encontrados"]:
-            for codigo in st.session_state["no_encontrados"]:
+        if no_encontrados:
+            for codigo in no_encontrados:
                 st.markdown(f"<div class='codigo'>{codigo}</div>", unsafe_allow_html=True)
 
     # ========================================
-    # 📦 BOTONES DE DESCARGA (NO REINICIAN)
+    # 📦 BOTONES DE DESCARGA (NO REBUSCAN)
     # ========================================
     colA, colB, colC = st.columns(3)
 
