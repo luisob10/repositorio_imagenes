@@ -16,127 +16,173 @@ if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
 if not st.session_state["autenticado"]:
-    st.title("🔐 Ingreso")
-    clave = st.text_input("Ingrese la clave de acceso", type="password")
+    # --- Login sin título ---
+    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave")
 
-    if st.button("Entrar") or (clave and st.session_state.get("enter_pressed", False)):
-        if clave == PASSWORD:
+    # Permitir Enter además del botón
+    login = st.button("Entrar") or (st.session_state.clave == PASSWORD and st.session_state.get("enter_pressed", False))
+
+    if login:
+        if st.session_state.clave == PASSWORD:
             st.session_state["autenticado"] = True
             st.experimental_rerun()
         else:
-            st.error("Clave incorrecta")
+            st.error("❌ Clave incorrecta")
 
-    st.session_state["enter_pressed"] = st.session_state.get("enter_pressed", False)
-else:
-    # ========================================
-    # 📂 CARGA DEL CSV
-    # ========================================
-    try:
-        df = pd.read_csv("imagenes.csv")
-        drive_ids = dict(zip(df["codigo"], df["id"]))
-    except Exception as e:
-        st.error(f"No se pudo cargar 'imagenes.csv': {e}")
+    # Detectar Enter correctamente
+    st.session_state["enter_pressed"] = False
+    st.markdown(
+        """
+        <script>
+        const input = window.parent.document.querySelector('input[type="password"]');
+        if (input) {
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    window.parent.postMessage({ type: 'enter_pressed' }, '*');
+                }
+            });
+        }
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.stop()
+
+# ========================================
+# 📂 CARGAR CSV DE IMÁGENES
+# ========================================
+try:
+    df = pd.read_csv("imagenes.csv")
+    drive_ids = dict(zip(df["codigo"], df["id"]))
+except Exception as e:
+    st.error(f"No se pudo cargar 'imagenes.csv': {e}")
+    st.stop()
+
+# ========================================
+# 🔧 FUNCIONES AUXILIARES
+# ========================================
+def normalizar_codigo(c):
+    return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
+
+def descargar_zip(filtro):
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as zip_file:
+        for key, file_id in drive_ids.items():
+            if key.endswith(f"_{filtro}"):
+                url = f"https://drive.google.com/uc?id={file_id}"
+                try:
+                    resp = requests.get(url)
+                    zip_file.writestr(f"{key}.jpg", resp.content)
+                except:
+                    pass
+    buffer.seek(0)
+    return buffer
+
+# ========================================
+# 🧠 INTERFAZ PRINCIPAL
+# ========================================
+input_codigos = st.text_area("", height=200, placeholder="Pega o escribe los códigos aquí...")
+
+buscar = st.button("🔍 Buscar")
+
+# Botones IM1 e IM2 (debajo del botón Buscar)
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if st.button("⬇️ IM1 (Descargar terminación _1)"):
+        zip_data = descargar_zip("1")
+        st.download_button("Descargar IM1.zip", data=zip_data, file_name="imagenes_IM1.zip", mime="application/zip")
+with col_btn2:
+    if st.button("⬇️ IM2 (Descargar terminación _2)"):
+        zip_data = descargar_zip("2")
+        st.download_button("Descargar IM2.zip", data=zip_data, file_name="imagenes_IM2.zip", mime="application/zip")
+
+# ========================================
+# 🔍 BÚSQUEDA DE CÓDIGOS
+# ========================================
+if buscar:
+    if not input_codigos.strip():
+        st.warning("Por favor ingresa al menos un código.")
         st.stop()
 
-    # ========================================
-    # 🎯 FUNCIÓN PARA NORMALIZAR CÓDIGOS
-    # ========================================
-    def normalizar_codigo(c):
-        return re.sub(r"[^A-Za-z0-9\-]", "", str(c)).strip().upper()
+    codigos = [normalizar_codigo(c) for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
+    encontrados = []
+    no_encontrados = []
+
+    for codigo in codigos:
+        coincidencias = [
+            key for key in drive_ids.keys()
+            if normalizar_codigo(key).startswith(codigo)
+        ]
+        if coincidencias:
+            encontrados.extend(coincidencias)
+        else:
+            no_encontrados.append(codigo)
 
     # ========================================
-    # 🧩 INTERFAZ PRINCIPAL
+    # 📋 RESULTADOS EN DOS COLUMNAS
     # ========================================
-    st.title("📸 Ingresar Códigos")
-    codigos_usuario = st.text_area("", height=200, placeholder="Escriba o pegue los códigos aquí...")
+    col1, col2 = st.columns(2)
 
-    if st.button("Buscar"):
-        if not codigos_usuario.strip():
-            st.warning("Ingrese al menos un código.")
-            st.stop()
-
-        codigos = [normalizar_codigo(c) for c in re.split(r"[,\n]+", codigos_usuario) if c.strip()]
-        encontrados = {}
-        no_encontrados = []
-
-        # Buscar coincidencias parciales
-        for codigo in codigos:
-            coincidencias = [
-                key for key in drive_ids.keys()
-                if normalizar_codigo(key).startswith(codigo)
-            ]
-            if coincidencias:
-                encontrados[codigo] = coincidencias
-            else:
-                no_encontrados.append(codigo)
-
-        # ========================================
-        # 📋 RESULTADOS EN DOS COLUMNAS
-        # ========================================
-        col1, col2 = st.columns(2)
-
-        # ---------------- CÓDIGOS ENCONTRADOS ----------------
-        with col1:
-            st.subheader("✅ Códigos encontrados")
-
-            if encontrados:
-                for base_codigo, lista_coincidencias in encontrados.items():
-                    st.markdown(f"**{base_codigo}**")
-
-                    # Mostrar botones IM1, IM2, ...
-                    botones = ""
-                    for i, key in enumerate(lista_coincidencias, start=1):
-                        file_id = drive_ids[key]
-                        img_url = f"https://drive.google.com/uc?id={file_id}"
-                        botones += f"""
-                        <a href="{img_url}" target="_blank" 
-                           style="background-color:#1E88E5; color:white; padding:6px 10px; 
-                                  border-radius:8px; text-decoration:none; margin-right:5px;"
-                           onmouseover="this.nextElementSibling.style.display='block'"
-                           onmouseout="this.nextElementSibling.style.display='none'">
-                           IM{i}
-                        </a>
-                        <div style="display:none; position:absolute; z-index:999; background:#000000dd; 
-                                    padding:4px; border-radius:8px;">
-                            <img src="{img_url}" style="width:180px; border-radius:6px;">
-                        </div>
-                        """
-                    st.markdown(botones, unsafe_allow_html=True)
-                    st.markdown("<hr>", unsafe_allow_html=True)
-            else:
-                st.info("No se encontró ningún código válido.")
-
-        # ---------------- CÓDIGOS NO ENCONTRADOS ----------------
-        with col2:
-            st.subheader("❌ Códigos no encontrados")
-            if no_encontrados:
-                for codigo in no_encontrados:
-                    st.markdown(
-                        f"<span style='color:white; text-decoration:underline;'>{codigo}</span>",
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.info("Todos los códigos fueron encontrados ✅")
-
-        # ========================================
-        # 📦 DESCARGAR ZIP
-        # ========================================
+    # ----- Códigos encontrados -----
+    with col1:
+        st.markdown("<h5 style='font-size:14px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
-            zip_buffer = BytesIO()
-            with ZipFile(zip_buffer, "w") as zip_file:
-                for _, lista_coincidencias in encontrados.items():
-                    for key in lista_coincidencias:
-                        file_id = drive_ids[key]
-                        img_url = f"https://drive.google.com/uc?id={file_id}"
-                        try:
-                            response = requests.get(img_url)
-                            zip_file.writestr(f"{key}.jpg", response.content)
-                        except Exception:
-                            pass
-            zip_buffer.seek(0)
-            st.download_button(
-                label="⬇️ Descargar todo (ZIP)",
-                data=zip_buffer,
-                file_name="imagenes_encontradas.zip",
-                mime="application/zip",
+            st.markdown(
+                """
+                <style>
+                .code-box {
+                    display:inline-block;
+                    position:relative;
+                    margin:5px;
+                    padding:3px 6px;
+                    border:1px solid #4CAF50;
+                    border-radius:5px;
+                    cursor:pointer;
+                    font-size:12px;
+                    color:white;
+                }
+                .code-box .preview {
+                    display:none;
+                    position:absolute;
+                    top:25px;
+                    left:0;
+                    z-index:100;
+                    border:1px solid #ccc;
+                    background:white;
+                    padding:2px;
+                }
+                .code-box:hover .preview {
+                    display:block;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
             )
+
+            html_codes = ""
+            for key in encontrados:
+                file_id = drive_ids[key]
+                url = f"https://drive.google.com/uc?id={file_id}"
+                html_codes += f"""
+                <div class="code-box">{key}
+                    <div class="preview">
+                        <img src="{url}" width="200"/>
+                    </div>
+                </div>
+                """
+            st.markdown(html_codes, unsafe_allow_html=True)
+        else:
+            st.info("No se encontró ningún código válido.")
+
+    # ----- Códigos no encontrados -----
+    with col2:
+        st.markdown("<h5 style='font-size:14px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
+        if no_encontrados:
+            for codigo in no_encontrados:
+                st.markdown(
+                    f"<span style='color:white; font-size:12px;'>{codigo}</span>",
+                    unsafe_allow_html=True
+                )
+        else:
+            st.info("Todos los códigos fueron encontrados ✅")
