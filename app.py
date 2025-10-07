@@ -3,8 +3,6 @@ import pandas as pd
 import requests
 from io import BytesIO
 from zipfile import ZipFile
-from PIL import Image
-import base64
 import re
 
 # ========================================
@@ -15,37 +13,24 @@ PASSWORD = "123"  # cámbiala a la tuya
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
+# --- PANTALLA DE LOGIN ---
 if not st.session_state["autenticado"]:
-    # --- Login sin título ---
-    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password", key="clave")
+    clave = st.text_input("🔑 Ingresa la clave de acceso", type="password")
 
-    # Permitir Enter además del botón
-    login = st.button("Entrar") or (st.session_state.clave == PASSWORD and st.session_state.get("enter_pressed", False))
-
-    if login:
-        if st.session_state.clave == PASSWORD:
+    # Permitir presionar Enter o botón
+    if st.button("Entrar") or (clave and st.session_state.get("enter_pressed")):
+        if clave == PASSWORD:
             st.session_state["autenticado"] = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("❌ Clave incorrecta")
 
-    # Detectar Enter correctamente
-    st.session_state["enter_pressed"] = False
-    st.markdown(
-        """
-        <script>
-        const input = window.parent.document.querySelector('input[type="password"]');
-        if (input) {
-            input.addEventListener('keydown', e => {
-                if (e.key === 'Enter') {
-                    window.parent.postMessage({ type: 'enter_pressed' }, '*');
-                }
-            });
-        }
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Detectar Enter con campo de texto (sin JS)
+    if clave and st.session_state.get("clave_anterior") != clave:
+        st.session_state["clave_anterior"] = clave
+        st.session_state["enter_pressed"] = True
+    else:
+        st.session_state["enter_pressed"] = False
 
     st.stop()
 
@@ -65,16 +50,17 @@ except Exception as e:
 def normalizar_codigo(c):
     return re.sub(r"[^A-Za-z0-9\\-]", "", str(c)).strip().upper()
 
-def descargar_zip(filtro):
+def descargar_zip_por_sufijo(sufijo):
+    """Crea un ZIP con todas las imágenes que terminan en _{sufijo}"""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zip_file:
         for key, file_id in drive_ids.items():
-            if key.endswith(f"_{filtro}"):
+            if key.endswith(f"_{sufijo}"):
                 url = f"https://drive.google.com/uc?id={file_id}"
                 try:
                     resp = requests.get(url)
                     zip_file.writestr(f"{key}.jpg", resp.content)
-                except:
+                except Exception:
                     pass
     buffer.seek(0)
     return buffer
@@ -86,16 +72,28 @@ input_codigos = st.text_area("", height=200, placeholder="Pega o escribe los có
 
 buscar = st.button("🔍 Buscar")
 
-# Botones IM1 e IM2 (debajo del botón Buscar)
+# --- Botones IM1 e IM2 debajo del botón Buscar ---
 col_btn1, col_btn2 = st.columns(2)
 with col_btn1:
-    if st.button("⬇️ IM1 (Descargar terminación _1)"):
-        zip_data = descargar_zip("1")
-        st.download_button("Descargar IM1.zip", data=zip_data, file_name="imagenes_IM1.zip", mime="application/zip")
+    if st.button("⬇️ IM1 (Descargar _1)"):
+        zip_data = descargar_zip_por_sufijo("1")
+        st.download_button(
+            label="Descargar IM1.zip",
+            data=zip_data,
+            file_name="imagenes_IM1.zip",
+            mime="application/zip",
+            key="descarga_im1"
+        )
 with col_btn2:
-    if st.button("⬇️ IM2 (Descargar terminación _2)"):
-        zip_data = descargar_zip("2")
-        st.download_button("Descargar IM2.zip", data=zip_data, file_name="imagenes_IM2.zip", mime="application/zip")
+    if st.button("⬇️ IM2 (Descargar _2)"):
+        zip_data = descargar_zip_por_sufijo("2")
+        st.download_button(
+            label="Descargar IM2.zip",
+            data=zip_data,
+            file_name="imagenes_IM2.zip",
+            mime="application/zip",
+            key="descarga_im2"
+        )
 
 # ========================================
 # 🔍 BÚSQUEDA DE CÓDIGOS
@@ -126,7 +124,7 @@ if buscar:
 
     # ----- Códigos encontrados -----
     with col1:
-        st.markdown("<h5 style='font-size:14px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='font-size:13px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         if encontrados:
             st.markdown(
                 """
@@ -134,12 +132,12 @@ if buscar:
                 .code-box {
                     display:inline-block;
                     position:relative;
-                    margin:5px;
-                    padding:3px 6px;
+                    margin:4px;
+                    padding:2px 5px;
                     border:1px solid #4CAF50;
                     border-radius:5px;
                     cursor:pointer;
-                    font-size:12px;
+                    font-size:11px;
                     color:white;
                 }
                 .code-box .preview {
@@ -167,7 +165,7 @@ if buscar:
                 html_codes += f"""
                 <div class="code-box">{key}
                     <div class="preview">
-                        <img src="{url}" width="200"/>
+                        <img src="{url}" width="180"/>
                     </div>
                 </div>
                 """
@@ -177,11 +175,11 @@ if buscar:
 
     # ----- Códigos no encontrados -----
     with col2:
-        st.markdown("<h5 style='font-size:14px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='font-size:13px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         if no_encontrados:
             for codigo in no_encontrados:
                 st.markdown(
-                    f"<span style='color:white; font-size:12px;'>{codigo}</span>",
+                    f"<span style='color:white; font-size:11px;'>{codigo}</span>",
                     unsafe_allow_html=True
                 )
         else:
