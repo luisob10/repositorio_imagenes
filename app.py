@@ -39,7 +39,7 @@ except Exception as e:
 # ========================================
 def normalizar_codigo(c):
     """Limpia el código y lo convierte a mayúsculas para comparar sin importar el caso."""
-    return re.sub(r"[^A-Za-z0-9\-]", "", str(c)).strip().upper()
+    return re.sub(r"[^A-Za-z0-9\-_]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
     """Descarga una imagen desde Google Drive y la convierte a base64."""
@@ -56,23 +56,25 @@ def obtener_imagen_b64(file_id):
         return None
 
 def obtener_extension(contenido):
-    """Detecta la extensión real usando PIL en lugar de imghdr."""
+    """Detecta la extensión real usando PIL."""
     try:
         img = Image.open(BytesIO(contenido))
         formato = img.format.lower()
-        if formato == "jpeg":
-            return "jpg"
-        return formato
+        return "jpg" if formato == "jpeg" else formato
     except Exception:
-        return "jpg"  # Valor por defecto si no se puede detectar
+        return "jpg"
 
-def generar_zip(encontrados, sufijo=None):
-    """Genera un ZIP con las imágenes encontradas (IM1, IM2 o todas) respetando su formato original."""
+def generar_zip(encontrados, sufijos=None):
+    """Genera un ZIP con las imágenes encontradas filtrando por una lista de sufijos."""
+    if sufijos is None:
+        sufijos = []
+
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
-            if sufijo and not codigo.endswith(f"_{sufijo}"):
-                continue
+            if sufijos:
+                if not any(codigo.endswith(s) for s in sufijos):
+                    continue
             file_id = drive_ids.get(codigo)
             if not file_id:
                 continue
@@ -103,7 +105,6 @@ if st.button("🔍 Buscar"):
     codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    # 🔎 Comparación sin importar mayúsculas/minúsculas
     for codigo in codigos:
         codigo_norm = normalizar_codigo(codigo)
         matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
@@ -125,7 +126,7 @@ if "encontrados" in st.session_state:
 
     col1, col2 = st.columns(2)
 
-    # --- Estilos CSS ---
+    # --- CSS ---
     st.markdown("""
         <style>
         .codigo {
@@ -185,11 +186,12 @@ if "encontrados" in st.session_state:
     # ========================================
     # 📦 DESCARGAS
     # ========================================
-    colA, colB, colC = st.columns(3)
+    colA, colB, colC, colD, colE = st.columns(5)
 
-    with colA:
-        if any(k.endswith("_1") for k in encontrados):
-            buffer1 = generar_zip(encontrados, "1")
+    # --- IM1 ---
+    if any(k.endswith("_1") or k.endswith("_1-Photoroom") for k in encontrados):
+        with colA:
+            buffer1 = generar_zip(encontrados, ["_1", "_1-Photoroom"])
             st.download_button(
                 "⬇️ Descargar IM1",
                 buffer1,
@@ -199,9 +201,10 @@ if "encontrados" in st.session_state:
                 key="desc1"
             )
 
-    with colB:
-        if any(k.endswith("_2") for k in encontrados):
-            buffer2 = generar_zip(encontrados, "2")
+    # --- IM2 ---
+    if any(k.endswith("_2") or k.endswith("_2-Photoroom") for k in encontrados):
+        with colB:
+            buffer2 = generar_zip(encontrados, ["_2", "_2-Photoroom"])
             st.download_button(
                 "⬇️ Descargar IM2",
                 buffer2,
@@ -211,7 +214,34 @@ if "encontrados" in st.session_state:
                 key="desc2"
             )
 
-    with colC:
+    # --- IM3 ---
+    if any(k.endswith("_3") or k.endswith("_3-Photoroom") for k in encontrados):
+        with colC:
+            buffer3 = generar_zip(encontrados, ["_3", "_3-Photoroom"])
+            st.download_button(
+                "⬇️ Descargar IM3",
+                buffer3,
+                "imagenes_IM3.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="desc3"
+            )
+
+    # --- IM4 ---
+    if any(k.endswith("_4") or k.endswith("_4-Photoroom") for k in encontrados):
+        with colD:
+            buffer4 = generar_zip(encontrados, ["_4", "_4-Photoroom"])
+            st.download_button(
+                "⬇️ Descargar IM4",
+                buffer4,
+                "imagenes_IM4.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="desc4"
+            )
+
+    # --- Descargar todo ---
+    with colE:
         buffer_all = generar_zip(encontrados)
         st.download_button(
             "⬇️ Descargar todo",
