@@ -107,9 +107,9 @@ if st.button("🔍 Buscar"):
     encontrados, no_encontrados = [], []
 
     # --- Barra y texto de progreso ---
-    progreso_text = st.empty()
+    progreso_texto = st.empty()
     progreso_barra = st.progress(0)
-    st.info("⏳ Buscando códigos, por favor espera...")
+    st.info("🔄 Iniciando búsqueda...")
 
     # --- Proceso con actualización en vivo ---
     for i, codigo in enumerate(codigos):
@@ -120,18 +120,17 @@ if st.button("🔍 Buscar"):
         else:
             no_encontrados.append(codigo)
 
-        # Actualizar progreso en tiempo real
         progreso = int(((i + 1) / total) * 100)
         progreso_barra.progress(progreso)
-        progreso_text.markdown(f"**Progreso:** {progreso}%")
-        time.sleep(0.01)  # 👈 necesario para actualizar la interfaz
+        progreso_texto.markdown(f"⏳ **Buscando códigos... {progreso}% completado**")
+        time.sleep(0.01)  # 👈 necesario para que la interfaz actualice
 
     # Guardar resultados
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
     st.session_state["ultima_busqueda"] = input_codigos.strip()
 
-    st.success("✅ Búsqueda completada.")
+    st.success("✅ Búsqueda completada al 100%")
 
 # ========================================
 # 📋 MOSTRAR RESULTADOS
