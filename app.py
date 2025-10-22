@@ -73,9 +73,8 @@ def generar_zip(encontrados, sufijos=None):
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
-            if sufijos:
-                if not any(codigo.endswith(s) for s in sufijos):
-                    continue
+            if sufijos and not any(codigo.endswith(s) for s in sufijos):
+                continue
             file_id = drive_ids.get(codigo)
             if not file_id:
                 continue
@@ -106,23 +105,30 @@ if st.button("🔍 Buscar"):
     codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    # --- Barra de progreso ---
-    progress_bar = st.progress(0)
+    # Barra visible mientras busca
+    progress_placeholder = st.empty()
+    progress_bar = progress_placeholder.progress(0)
+    progress_text = st.empty()
+
     total = len(codigos)
 
     for i, codigo in enumerate(codigos, start=1):
         codigo_norm = normalizar_codigo(codigo)
+
+        # buscar coincidencias reales
         matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
         if matches:
             encontrados.extend(matches)
         else:
             no_encontrados.append(codigo)
 
-        # Actualiza progreso (0-100%)
         percent = int(i / total * 100)
         progress_bar.progress(percent)
-        # Pequeño retraso visual opcional (puedes quitarlo)
-        # time.sleep(0.01)
+        progress_text.text(f"🔎 Buscando códigos... {percent}%")
+
+    # Oculta barra y texto al terminar
+    progress_placeholder.empty()
+    progress_text.empty()
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
