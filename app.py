@@ -6,12 +6,12 @@ from zipfile import ZipFile
 from PIL import Image
 import re
 import base64
-import time
 
 # ========================================
 # 🔐 LOGIN
 # ========================================
 PASSWORD = "123"
+
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
@@ -38,9 +38,11 @@ except Exception as e:
 # ⚙️ FUNCIONES
 # ========================================
 def normalizar_codigo(c):
+    """Limpia el código y lo convierte a mayúsculas para comparar sin importar el caso."""
     return re.sub(r"[^A-Za-z0-9\-_]", "", str(c)).strip().upper()
 
 def obtener_imagen_b64(file_id):
+    """Descarga una imagen desde Google Drive y la convierte a base64."""
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
     try:
         r = requests.get(url, timeout=10)
@@ -54,6 +56,7 @@ def obtener_imagen_b64(file_id):
         return None
 
 def obtener_extension(contenido):
+    """Detecta la extensión real usando PIL."""
     try:
         img = Image.open(BytesIO(contenido))
         formato = img.format.lower()
@@ -62,13 +65,16 @@ def obtener_extension(contenido):
         return "jpg"
 
 def generar_zip(encontrados, sufijos=None):
+    """Genera un ZIP con las imágenes encontradas filtrando por una lista de sufijos."""
     if sufijos is None:
         sufijos = []
+
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
-            if sufijos and not any(codigo.endswith(s) for s in sufijos):
-                continue
+            if sufijos:
+                if not any(codigo.endswith(s) for s in sufijos):
+                    continue
             file_id = drive_ids.get(codigo)
             if not file_id:
                 continue
@@ -90,53 +96,16 @@ def generar_zip(encontrados, sufijos=None):
 st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
 input_codigos = st.text_area("", height=160, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
 
+# --- Botón buscar ---
 if st.button("🔍 Buscar"):
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
         st.stop()
-    st.session_state["input_codigos"] = input_codigos.strip()
-    st.session_state["buscando"] = True
-    st.rerun()
 
-# ========================================
-# 🔄 PROCESO DE BÚSQUEDA CON SPINNER Y PORCENTAJE
-# ========================================
-if st.session_state.get("buscando", False):
-    codigos = [c.strip() for c in re.split(r"[,\n]+", st.session_state["input_codigos"]) if c.strip()]
+    codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
-    total = len(codigos)
 
-    # contenedor para spinner y porcentaje
-    with st.container():
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            # spinner animado personalizado
-            st.markdown("""
-            <div class='loader'></div>
-            <style>
-            .loader {
-              border: 5px solid #f3f3f3;
-              border-top: 5px solid #3498db;
-              border-radius: 50%;
-              width: 40px;
-              height: 40px;
-              animation: spin 1s linear infinite;
-              margin: 10px auto;
-            }
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-            </style>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.markdown("### Buscando códigos...")
-
-    progress_bar = st.progress(0)
-    porcentaje_texto = st.empty()
-
-    # Búsqueda con porcentaje en tiempo real
-    for i, codigo in enumerate(codigos):
+    for codigo in codigos:
         codigo_norm = normalizar_codigo(codigo)
         matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
         if matches:
@@ -144,30 +113,20 @@ if st.session_state.get("buscando", False):
         else:
             no_encontrados.append(codigo)
 
-        porcentaje = int(((i + 1) / total) * 100)
-        progress_bar.progress(porcentaje)
-        porcentaje_texto.markdown(
-            f"<h4 style='text-align:center; color:#1E90FF;'>🔎 {porcentaje}% completado...</h4>",
-            unsafe_allow_html=True
-        )
-        time.sleep(0.05)  # simula tiempo de carga
-
-    porcentaje_texto.markdown("<h4 style='text-align:center; color:lime;'>✅ 100% completado</h4>", unsafe_allow_html=True)
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
-    st.session_state["buscando"] = False
-    time.sleep(0.5)
-    st.rerun()
+    st.session_state["ultima_busqueda"] = input_codigos.strip()
 
 # ========================================
-# 📋 RESULTADOS
+# 📋 MOSTRAR RESULTADOS
 # ========================================
-if "encontrados" in st.session_state and not st.session_state.get("buscando", False):
+if "encontrados" in st.session_state:
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
     col1, col2 = st.columns(2)
 
+    # --- CSS ---
     st.markdown("""
         <style>
         .codigo {
@@ -199,6 +158,7 @@ if "encontrados" in st.session_state and not st.session_state.get("buscando", Fa
         </style>
     """, unsafe_allow_html=True)
 
+    # --- Códigos encontrados ---
     with col1:
         st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
         html = ""
@@ -217,7 +177,78 @@ if "encontrados" in st.session_state and not st.session_state.get("buscando", Fa
                 html += f"<div class='codigo'>{codigo}</div>"
         st.markdown(html, unsafe_allow_html=True)
 
+    # --- Códigos no encontrados ---
     with col2:
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         for c in no_encontrados:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
+
+    # ========================================
+    # 📦 DESCARGAS
+    # ========================================
+    colA, colB, colC, colD, colE = st.columns(5)
+
+    # --- IM1 ---
+    if any(k.endswith("_1") or k.endswith("_1-Photoroom") for k in encontrados):
+        with colA:
+            buffer1 = generar_zip(encontrados, ["_1", "_1-Photoroom"])
+            st.download_button(
+                "⬇️ Descargar IM1",
+                buffer1,
+                "imagenes_IM1.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="desc1"
+            )
+
+    # --- IM2 ---
+    if any(k.endswith("_2") or k.endswith("_2-Photoroom") for k in encontrados):
+        with colB:
+            buffer2 = generar_zip(encontrados, ["_2", "_2-Photoroom"])
+            st.download_button(
+                "⬇️ Descargar IM2",
+                buffer2,
+                "imagenes_IM2.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="desc2"
+            )
+
+    # --- IM3 ---
+    if any(k.endswith("_3") or k.endswith("_3-Photoroom") for k in encontrados):
+        with colC:
+            buffer3 = generar_zip(encontrados, ["_3", "_3-Photoroom"])
+            st.download_button(
+                "⬇️ Descargar IM3",
+                buffer3,
+                "imagenes_IM3.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="desc3"
+            )
+
+    # --- IM4 ---
+    if any(k.endswith("_4") or k.endswith("_4-Photoroom") for k in encontrados):
+        with colD:
+            buffer4 = generar_zip(encontrados, ["_4", "_4-Photoroom"])
+            st.download_button(
+                "⬇️ Descargar IM4",
+                buffer4,
+                "imagenes_IM4.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="desc4"
+            )
+
+    # --- Descargar todo ---
+    with colE:
+        buffer_all = generar_zip(encontrados)
+        st.download_button(
+            "⬇️ Descargar todo",
+            buffer_all,
+            "imagenes_todas.zip",
+            mime="application/zip",
+            use_container_width=True,
+            key="desc_all"
+        )
+
