@@ -96,8 +96,6 @@ if st.button("🔍 Buscar"):
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
         st.stop()
-
-    # Guardamos la entrada y activamos bandera de búsqueda
     st.session_state["input_codigos"] = input_codigos.strip()
     st.session_state["buscando"] = True
     st.rerun()
@@ -109,9 +107,14 @@ if st.session_state.get("buscando", False):
 
     progress_text = st.empty()
     progress_bar = st.progress(0)
+    porcentaje_texto = st.empty()  # texto grande de porcentaje
+
     total = len(codigos)
 
-    with st.spinner("🔎 Buscando códigos..."):
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<h5>🧠 Buscando códigos...</h5>", unsafe_allow_html=True)
+
+    with st.spinner("Procesando búsqueda..."):
         for i, codigo in enumerate(codigos):
             codigo_norm = normalizar_codigo(codigo)
             matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
@@ -124,13 +127,21 @@ if st.session_state.get("buscando", False):
             progress_bar.progress(porcentaje)
             progress_text.text(f"Progreso: {porcentaje}%")
 
-            # 🔁 Permite refrescar interfaz en tiempo real
+            # 🎯 Mostrar porcentaje grande centrado
+            porcentaje_texto.markdown(
+                f"<h2 style='text-align:center; color:#00BFFF;'>⏳ {porcentaje}%</h2>",
+                unsafe_allow_html=True
+            )
+
             time.sleep(0.05)
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
     st.session_state["buscando"] = False
+
     progress_text.text("✅ Búsqueda completada (100%)")
+    porcentaje_texto.markdown("<h2 style='text-align:center; color:lime;'>✅ 100%</h2>", unsafe_allow_html=True)
+    time.sleep(0.5)
     st.rerun()
 
 # ========================================
