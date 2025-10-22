@@ -97,10 +97,16 @@ if st.button("🔍 Buscar"):
         st.warning("Por favor ingresa al menos un código.")
         st.stop()
 
-    codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
+    # Guardamos la entrada y activamos bandera de búsqueda
+    st.session_state["input_codigos"] = input_codigos.strip()
+    st.session_state["buscando"] = True
+    st.rerun()
+
+# --- Ejecución progresiva mientras busca ---
+if st.session_state.get("buscando", False):
+    codigos = [c.strip() for c in re.split(r"[,\n]+", st.session_state["input_codigos"]) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    # 🔄 Indicador de progreso y spinner
     progress_text = st.empty()
     progress_bar = st.progress(0)
     total = len(codigos)
@@ -114,24 +120,23 @@ if st.button("🔍 Buscar"):
             else:
                 no_encontrados.append(codigo)
 
-            # 🔢 Actualiza porcentaje de progreso
             porcentaje = int(((i + 1) / total) * 100)
             progress_bar.progress(porcentaje)
             progress_text.text(f"Progreso: {porcentaje}%")
 
-            # Pequeño retardo para que se vea el cambio (opcional)
-            time.sleep(0.01)
-
-    progress_text.text("✅ Búsqueda completada (100%)")
+            # 🔁 Permite refrescar interfaz en tiempo real
+            time.sleep(0.05)
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
-    st.session_state["ultima_busqueda"] = input_codigos.strip()
+    st.session_state["buscando"] = False
+    progress_text.text("✅ Búsqueda completada (100%)")
+    st.rerun()
 
 # ========================================
 # 📋 MOSTRAR RESULTADOS
 # ========================================
-if "encontrados" in st.session_state:
+if "encontrados" in st.session_state and not st.session_state.get("buscando", False):
     encontrados = st.session_state["encontrados"]
     no_encontrados = st.session_state["no_encontrados"]
 
