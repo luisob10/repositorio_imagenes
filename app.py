@@ -12,7 +12,6 @@ import time
 # 🔐 LOGIN
 # ========================================
 PASSWORD = "123"
-
 if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 
@@ -91,7 +90,6 @@ def generar_zip(encontrados, sufijos=None):
 st.markdown("<div style='margin-top:-35px;'><h6>Ingresar códigos</h6></div>", unsafe_allow_html=True)
 input_codigos = st.text_area("", height=160, label_visibility="collapsed", placeholder="Pega o escribe los códigos aquí...")
 
-# --- Botón buscar ---
 if st.button("🔍 Buscar"):
     if not input_codigos.strip():
         st.warning("Por favor ingresa al menos un código.")
@@ -100,52 +98,64 @@ if st.button("🔍 Buscar"):
     st.session_state["buscando"] = True
     st.rerun()
 
-# --- Ejecución progresiva mientras busca ---
+# ========================================
+# 🌀 PROGRESO MIENTRAS BUSCA
+# ========================================
 if st.session_state.get("buscando", False):
     codigos = [c.strip() for c in re.split(r"[,\n]+", st.session_state["input_codigos"]) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    progress_text = st.empty()
-    progress_bar = st.progress(0)
-    porcentaje_texto = st.empty()  # texto grande de porcentaje
-
     total = len(codigos)
+    progress_bar = st.progress(0)
+    porcentaje_texto = st.empty()
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("<h5>🧠 Buscando códigos...</h5>", unsafe_allow_html=True)
+    # Spinner visual personalizado (persona animada simulada)
+    st.markdown("""
+    <div style='text-align:center;'>
+        <div class='loader'></div>
+        <p style='color:white; font-size:18px;'>Buscando códigos...</p>
+    </div>
+    <style>
+    .loader {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    with st.spinner("Procesando búsqueda..."):
-        for i, codigo in enumerate(codigos):
-            codigo_norm = normalizar_codigo(codigo)
-            matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
-            if matches:
-                encontrados.extend(matches)
-            else:
-                no_encontrados.append(codigo)
+    # Actualización en tiempo real durante la búsqueda
+    for i, codigo in enumerate(codigos):
+        codigo_norm = normalizar_codigo(codigo)
+        matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
+        if matches:
+            encontrados.extend(matches)
+        else:
+            no_encontrados.append(codigo)
 
-            porcentaje = int(((i + 1) / total) * 100)
-            progress_bar.progress(porcentaje)
-            progress_text.text(f"Progreso: {porcentaje}%")
-
-            # 🎯 Mostrar porcentaje grande centrado
-            porcentaje_texto.markdown(
-                f"<h2 style='text-align:center; color:#00BFFF;'>⏳ {porcentaje}%</h2>",
-                unsafe_allow_html=True
-            )
-
-            time.sleep(0.05)
+        porcentaje = int(((i + 1) / total) * 100)
+        progress_bar.progress(porcentaje)
+        porcentaje_texto.markdown(f"<h3 style='text-align:center; color:#00BFFF;'>⏳ {porcentaje}%</h3>", unsafe_allow_html=True)
+        time.sleep(0.05)  # simula tiempo de procesamiento
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
     st.session_state["buscando"] = False
 
-    progress_text.text("✅ Búsqueda completada (100%)")
-    porcentaje_texto.markdown("<h2 style='text-align:center; color:lime;'>✅ 100%</h2>", unsafe_allow_html=True)
+    porcentaje_texto.markdown("<h3 style='text-align:center; color:lime;'>✅ 100%</h3>", unsafe_allow_html=True)
     time.sleep(0.5)
     st.rerun()
 
 # ========================================
-# 📋 MOSTRAR RESULTADOS
+# 📋 RESULTADOS
 # ========================================
 if "encontrados" in st.session_state and not st.session_state.get("buscando", False):
     encontrados = st.session_state["encontrados"]
@@ -206,32 +216,3 @@ if "encontrados" in st.session_state and not st.session_state.get("buscando", Fa
         st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
         for c in no_encontrados:
             st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
-
-    # ========================================
-    # 📦 DESCARGAS
-    # ========================================
-    colA, colB, colC, colD, colE = st.columns(5)
-
-    if any(k.endswith("_1") or k.endswith("_1-Photoroom") for k in encontrados):
-        with colA:
-            buffer1 = generar_zip(encontrados, ["_1", "_1-Photoroom"])
-            st.download_button("⬇️ Descargar IM1", buffer1, "imagenes_IM1.zip", mime="application/zip", use_container_width=True)
-
-    if any(k.endswith("_2") or k.endswith("_2-Photoroom") for k in encontrados):
-        with colB:
-            buffer2 = generar_zip(encontrados, ["_2", "_2-Photoroom"])
-            st.download_button("⬇️ Descargar IM2", buffer2, "imagenes_IM2.zip", mime="application/zip", use_container_width=True)
-
-    if any(k.endswith("_3") or k.endswith("_3-Photoroom") for k in encontrados):
-        with colC:
-            buffer3 = generar_zip(encontrados, ["_3", "_3-Photoroom"])
-            st.download_button("⬇️ Descargar IM3", buffer3, "imagenes_IM3.zip", mime="application/zip", use_container_width=True)
-
-    if any(k.endswith("_4") or k.endswith("_4-Photoroom") for k in encontrados):
-        with colD:
-            buffer4 = generar_zip(encontrados, ["_4", "_4-Photoroom"])
-            st.download_button("⬇️ Descargar IM4", buffer4, "imagenes_IM4.zip", mime="application/zip", use_container_width=True)
-
-    with colE:
-        buffer_all = generar_zip(encontrados)
-        st.download_button("⬇️ Descargar todo", buffer_all, "imagenes_todas.zip", mime="application/zip", use_container_width=True)
