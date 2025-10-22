@@ -6,6 +6,7 @@ from zipfile import ZipFile
 from PIL import Image
 import re
 import base64
+import time
 
 # ========================================
 # 🔐 LOGIN
@@ -105,7 +106,11 @@ if st.button("🔍 Buscar"):
     codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    for codigo in codigos:
+    # --- Barra de progreso ---
+    progress_bar = st.progress(0)
+    total = len(codigos)
+
+    for i, codigo in enumerate(codigos, start=1):
         codigo_norm = normalizar_codigo(codigo)
         matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
         if matches:
@@ -113,9 +118,17 @@ if st.button("🔍 Buscar"):
         else:
             no_encontrados.append(codigo)
 
+        # Actualiza progreso (0-100%)
+        percent = int(i / total * 100)
+        progress_bar.progress(percent)
+        # Pequeño retraso visual opcional (puedes quitarlo)
+        # time.sleep(0.01)
+
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
     st.session_state["ultima_busqueda"] = input_codigos.strip()
+
+    st.success("✅ Búsqueda completada.")
 
 # ========================================
 # 📋 MOSTRAR RESULTADOS
