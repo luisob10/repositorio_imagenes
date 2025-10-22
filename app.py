@@ -99,40 +99,43 @@ if st.button("🔍 Buscar"):
     st.rerun()
 
 # ========================================
-# 🌀 PROGRESO MIENTRAS BUSCA
+# 🔄 PROCESO DE BÚSQUEDA CON SPINNER Y PORCENTAJE
 # ========================================
 if st.session_state.get("buscando", False):
     codigos = [c.strip() for c in re.split(r"[,\n]+", st.session_state["input_codigos"]) if c.strip()]
     encontrados, no_encontrados = [], []
-
     total = len(codigos)
+
+    # contenedor para spinner y porcentaje
+    with st.container():
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            # spinner animado personalizado
+            st.markdown("""
+            <div class='loader'></div>
+            <style>
+            .loader {
+              border: 5px solid #f3f3f3;
+              border-top: 5px solid #3498db;
+              border-radius: 50%;
+              width: 40px;
+              height: 40px;
+              animation: spin 1s linear infinite;
+              margin: 10px auto;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            </style>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown("### Buscando códigos...")
+
     progress_bar = st.progress(0)
     porcentaje_texto = st.empty()
 
-    # Spinner visual personalizado (persona animada simulada)
-    st.markdown("""
-    <div style='text-align:center;'>
-        <div class='loader'></div>
-        <p style='color:white; font-size:18px;'>Buscando códigos...</p>
-    </div>
-    <style>
-    .loader {
-      border: 6px solid #f3f3f3;
-      border-top: 6px solid #3498db;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: auto;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Actualización en tiempo real durante la búsqueda
+    # Búsqueda con porcentaje en tiempo real
     for i, codigo in enumerate(codigos):
         codigo_norm = normalizar_codigo(codigo)
         matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
@@ -143,14 +146,16 @@ if st.session_state.get("buscando", False):
 
         porcentaje = int(((i + 1) / total) * 100)
         progress_bar.progress(porcentaje)
-        porcentaje_texto.markdown(f"<h3 style='text-align:center; color:#00BFFF;'>⏳ {porcentaje}%</h3>", unsafe_allow_html=True)
-        time.sleep(0.05)  # simula tiempo de procesamiento
+        porcentaje_texto.markdown(
+            f"<h4 style='text-align:center; color:#1E90FF;'>🔎 {porcentaje}% completado...</h4>",
+            unsafe_allow_html=True
+        )
+        time.sleep(0.05)  # simula tiempo de carga
 
+    porcentaje_texto.markdown("<h4 style='text-align:center; color:lime;'>✅ 100% completado</h4>", unsafe_allow_html=True)
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
     st.session_state["buscando"] = False
-
-    porcentaje_texto.markdown("<h3 style='text-align:center; color:lime;'>✅ 100%</h3>", unsafe_allow_html=True)
     time.sleep(0.5)
     st.rerun()
 
