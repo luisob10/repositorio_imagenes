@@ -6,7 +6,6 @@ from zipfile import ZipFile
 from PIL import Image
 import re
 import base64
-import time
 
 # ========================================
 # 🔐 LOGIN
@@ -101,8 +100,9 @@ if st.button("🔍 Buscar"):
     codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    # 👉 Barra de progreso + spinner juntos
+    # 👉 Barra de progreso + porcentaje + spinner
     progress_bar = st.progress(0)
+    porcentaje_text = st.empty()
     total = len(codigos)
 
     with st.spinner("Buscando códigos..."):
@@ -114,14 +114,12 @@ if st.button("🔍 Buscar"):
             else:
                 no_encontrados.append(codigo)
 
-            # Actualizar porcentaje real
             progreso = int(((i + 1) / total) * 100)
             progress_bar.progress(progreso)
-
-            # Pequeña pausa visual opcional (puedes quitarla si deseas más velocidad)
-            time.sleep(0.01)
+            porcentaje_text.markdown(f"**Progreso: {progreso}%**")
 
     progress_bar.progress(100)
+    porcentaje_text.markdown("✅ **Búsqueda completada (100%)**")
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
