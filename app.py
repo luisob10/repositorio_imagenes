@@ -6,6 +6,7 @@ from zipfile import ZipFile
 from PIL import Image
 import re
 import base64
+import time
 
 # ========================================
 # 🔐 LOGIN
@@ -64,7 +65,6 @@ def obtener_extension(contenido):
 def generar_zip(encontrados, sufijos=None):
     if sufijos is None:
         sufijos = []
-
     buffer = BytesIO()
     with ZipFile(buffer, "w") as zipf:
         for codigo in encontrados:
@@ -100,26 +100,33 @@ if st.button("🔍 Buscar"):
     codigos = [c.strip() for c in re.split(r"[,\n]+", input_codigos) if c.strip()]
     encontrados, no_encontrados = [], []
 
-    # 👉 Barra de progreso + porcentaje + spinner
+    # --- ELEMENTOS DE CARGA VISUAL ---
+    progreso_text = st.empty()
     progress_bar = st.progress(0)
-    porcentaje_text = st.empty()
+    loading_placeholder = st.empty()
     total = len(codigos)
 
-    with st.spinner("Buscando códigos..."):
-        for i, codigo in enumerate(codigos):
-            codigo_norm = normalizar_codigo(codigo)
-            matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
-            if matches:
-                encontrados.extend(matches)
-            else:
-                no_encontrados.append(codigo)
+    # --- Mostrar mensaje animado de carga ---
+    loading_placeholder.markdown("⏳ **Buscando códigos, por favor espera...**")
 
-            progreso = int(((i + 1) / total) * 100)
-            progress_bar.progress(progreso)
-            porcentaje_text.markdown(f"**Progreso: {progreso}%**")
+    # --- Bucle con actualización visible ---
+    for i, codigo in enumerate(codigos):
+        codigo_norm = normalizar_codigo(codigo)
+        matches = [k for k in drive_ids.keys() if normalizar_codigo(k).startswith(codigo_norm)]
+        if matches:
+            encontrados.extend(matches)
+        else:
+            no_encontrados.append(codigo)
 
+        progreso = int(((i + 1) / total) * 100)
+        progress_bar.progress(progreso)
+        progreso_text.markdown(f"**Progreso: {progreso}%**")
+        time.sleep(0.001)  # Para permitir actualización visual
+
+    # --- Finalización ---
     progress_bar.progress(100)
-    porcentaje_text.markdown("✅ **Búsqueda completada (100%)**")
+    progreso_text.markdown("✅ **Búsqueda completada (100%)**")
+    loading_placeholder.empty()
 
     st.session_state["encontrados"] = sorted(set(encontrados))
     st.session_state["no_encontrados"] = no_encontrados
@@ -149,70 +156,3 @@ if "encontrados" in st.session_state:
             width: 250px;
             height: 250px;
             background-color: #000;
-            border: 2px solid #555;
-            border-radius: 8px;
-            position: absolute;
-            z-index: 999;
-            top: -10px;
-            left: 105%;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .codigo:hover .tooltip-img {
-            visibility: visible;
-            opacity: 1;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    with col1:
-        st.markdown("<h5 style='font-size:15px;'>✅ Códigos encontrados</h5>", unsafe_allow_html=True)
-        html = ""
-        for codigo in encontrados:
-            file_id = drive_ids.get(codigo)
-            img_b64 = obtener_imagen_b64(file_id)
-            if img_b64:
-                html += f"""
-                <div class="codigo">{codigo}
-                    <div class="tooltip-img">
-                        <img src="data:image/jpeg;base64,{img_b64}" width="250" height="250" style="object-fit:contain;"/>
-                    </div>
-                </div>
-                """
-            else:
-                html += f"<div class='codigo'>{codigo}</div>"
-        st.markdown(html, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("<h5 style='font-size:15px;'>❌ Códigos no encontrados</h5>", unsafe_allow_html=True)
-        for c in no_encontrados:
-            st.markdown(f"<div class='codigo'>{c}</div>", unsafe_allow_html=True)
-
-    # ========================================
-    # 📦 DESCARGAS
-    # ========================================
-    colA, colB, colC, colD, colE = st.columns(5)
-
-    if any(k.endswith("_1") or k.endswith("_1-Photoroom") for k in encontrados):
-        with colA:
-            buffer1 = generar_zip(encontrados, ["_1", "_1-Photoroom"])
-            st.download_button("⬇️ Descargar IM1", buffer1, "imagenes_IM1.zip", mime="application/zip", use_container_width=True)
-
-    if any(k.endswith("_2") or k.endswith("_2-Photoroom") for k in encontrados):
-        with colB:
-            buffer2 = generar_zip(encontrados, ["_2", "_2-Photoroom"])
-            st.download_button("⬇️ Descargar IM2", buffer2, "imagenes_IM2.zip", mime="application/zip", use_container_width=True)
-
-    if any(k.endswith("_3") or k.endswith("_3-Photoroom") for k in encontrados):
-        with colC:
-            buffer3 = generar_zip(encontrados, ["_3", "_3-Photoroom"])
-            st.download_button("⬇️ Descargar IM3", buffer3, "imagenes_IM3.zip", mime="application/zip", use_container_width=True)
-
-    if any(k.endswith("_4") or k.endswith("_4-Photoroom") for k in encontrados):
-        with colD:
-            buffer4 = generar_zip(encontrados, ["_4", "_4-Photoroom"])
-            st.download_button("⬇️ Descargar IM4", buffer4, "imagenes_IM4.zip", mime="application/zip", use_container_width=True)
-
-    with colE:
-        buffer_all = generar_zip(encontrados)
-        st.download_button("⬇️ Descargar todo", buffer_all, "imagenes_todas.zip", mime="application/zip", use_container_width=True)
